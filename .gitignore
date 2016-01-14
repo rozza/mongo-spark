@@ -12,6 +12,7 @@
 build
 out
 mongo*.jar
+target
 
 # Eclipse files
 .classpath
@@ -39,3 +40,5 @@ codereview.rc
 docs/reference/public
 docs/landing/public
 docs/hugo*
+
+c-conn
