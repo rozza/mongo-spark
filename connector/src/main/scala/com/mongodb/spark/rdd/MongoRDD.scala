@@ -23,6 +23,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import org.bson.Document
+import org.bson.codecs.configuration.CodecRegistry
 import org.bson.conversions.Bson
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD
@@ -107,10 +108,8 @@ abstract class MongoRDD[D: ClassTag](@transient sc: SparkContext, dep: Seq[Depen
    * @return the updated MongoRDD
    */
   def withPipeline[B <: Bson](pipeline: Seq[B]): Self = {
-    copy(pipeline = pipeline.map(x => x.toBsonDocument(
-      classOf[Document],
-      connector.value.getMongoClient().getMongoClientOptions.getCodecRegistry
-    ))) // Convert to BsonDocuments as they are serializable
+    val codecRegistry: CodecRegistry = connector.value.getMongoClient().getMongoClientOptions.getCodecRegistry
+    copy(pipeline = pipeline.map(x => x.toBsonDocument(classOf[Document], codecRegistry))) // Convert to serializable BsonDocuments
   }
 
   /**
