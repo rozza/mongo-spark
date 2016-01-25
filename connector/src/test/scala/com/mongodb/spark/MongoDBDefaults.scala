@@ -80,17 +80,18 @@ class MongoDBDefaults extends Logging {
   }
 
   def loadSampleData(collectionName: String, name: String): Unit = {
-    if (isMongoDBOnline()) {
-      logInfo(s"Loading sample Data: '$name' data into '$collectionName'")
-      val collection: MongoCollection[Document] = mongoClient.getDatabase(DATABASE_NAME).getCollection(collectionName)
-      Try(Source.fromURL(getClass.getResource(name)).getLines().map(x => Document.parse(x))) match {
-        case Success(documents) => collection.insertMany(documents.toList.asJava)
-        case Failure(e)         => throw e
-      }
+    // TODO review usage and remove if not required before 1.0
+    assert(isMongoDBOnline(), "MongoDB offline")
+    logInfo(s"Loading sample Data: '$name' data into '$collectionName'")
+    val collection: MongoCollection[Document] = mongoClient.getDatabase(DATABASE_NAME).getCollection(collectionName)
+    Try(Source.fromURL(getClass.getResource(name)).getLines().map(x => Document.parse(x))) match {
+      case Success(documents) => collection.insertMany(documents.toList.asJava)
+      case Failure(e)         => throw e
     }
   }
 
   def loadSampleData(collectionName: String, sizeInMB: Int): Unit = {
+    assert(isMongoDBOnline(), "MongoDB offline")
     assert(sizeInMB > 0, "Size in MB must be more than ")
     logInfo(s"Loading sample Data: ~${sizeInMB}MB data into '$collectionName'")
     val collection: MongoCollection[Document] = mongoClient.getDatabase(DATABASE_NAME)
