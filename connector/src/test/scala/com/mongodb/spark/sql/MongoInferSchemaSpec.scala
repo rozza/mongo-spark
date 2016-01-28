@@ -16,13 +16,16 @@
 
 package com.mongodb.spark.sql
 
+import scala.collection.JavaConverters._
+
 import org.scalatest.FlatSpec
 
-import scala.collection.JavaConverters._
-import org.bson.{Document, BsonDocument}
 import org.bson.conversions.Bson
+import org.bson.{BsonDocument, Document}
 import com.mongodb.MongoClient
 import com.mongodb.spark._
+import com.mongodb.spark.conf.ReadConfig
+import com.mongodb.spark.rdd.MongoRDD
 
 class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with RequiresMongoDB {
 
@@ -30,7 +33,7 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
     forAll(genSimpleDataTypes) { (datum: Seq[MongoDataType]) =>
       datum.foreach { data =>
         sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-        data.schema should equal(MongoInferSchema(sc, sampleSize, sampleRatio))
+        data.schema should equal(MongoInferSchema(sc))
         sc.dropDatabase()
       }
     }
@@ -39,7 +42,7 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
   it should "be able to infer the schema from a flat array" in withSparkContext() { sc =>
     forAll(genArrayDataType(0)) { (data: MongoDataType) =>
       sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(sc, sampleSize, sampleRatio))
+      data.schema should equal(MongoInferSchema(sc))
       sc.dropDatabase()
     }
   }
@@ -47,7 +50,7 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
   it should "be able to infer the schema from a flat document" in withSparkContext() { sc =>
     forAll(genDocumentDataType(0)) { (data: MongoDataType) =>
       sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(sc, sampleSize, sampleRatio))
+      data.schema should equal(MongoInferSchema(sc))
       sc.dropDatabase()
     }
   }
@@ -55,7 +58,7 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
   it should "be able to infer the schema from a nested array" in withSparkContext() { sc =>
     forAll(genArrayDataType()) { (data: MongoDataType) =>
       sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(sc, sampleSize, sampleRatio))
+      data.schema should equal(MongoInferSchema(sc))
       sc.dropDatabase()
     }
   }
@@ -63,7 +66,7 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
   it should "be able to infer the schema from a multi level document" in withSparkContext() { sc =>
     forAll(genDocumentDataType()) { (data: MongoDataType) =>
       sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(sc, sampleSize, sampleRatio))
+      data.schema should equal(MongoInferSchema(sc))
       sc.dropDatabase()
     }
   }
@@ -71,7 +74,8 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
   it should "be able to infer the schema with custom sampleSize and ratio" in withSparkContext() { sc =>
     forAll(genDocumentDataType()) { (data: MongoDataType) =>
       sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(sc, sampleSize = 200, samplingRatio = 0.25)) // scalastyle:ignore
+
+      data.schema should equal(MongoInferSchema(MongoRDD[BsonDocument](sc, readConfig.copy(sampleSize = 200, samplingRatio = 0.25)))) // scalastyle:ignore
       sc.dropDatabase()
     }
   }
@@ -87,7 +91,7 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
       ).toBson
 
       sc.parallelize(allDocs).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(sc, sampleSize, sampleRatio))
+      data.schema should equal(MongoInferSchema(sc))
       sc.dropDatabase()
     }
   }

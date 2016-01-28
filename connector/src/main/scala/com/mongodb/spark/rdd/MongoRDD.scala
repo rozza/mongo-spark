@@ -26,6 +26,7 @@ import org.bson.Document
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.conversions.Bson
 import com.mongodb.spark.MongoConnector
+import com.mongodb.spark.conf.ReadConfig
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD
 import com.mongodb.spark.rdd.partitioner.MongoPartitioner
 
@@ -53,23 +54,29 @@ object MongoRDD {
    * @tparam D the type of Document to return
    * @return a MongoRDD
    */
-  def apply[D: ClassTag](sc: SparkContext, connector: MongoConnector): MongoRDD[D] = {
-    MongoSplitKeyRDD(sc, connector)
-  }
+  def apply[D: ClassTag](sc: SparkContext, connector: MongoConnector): MongoRDD[D] = apply(sc, connector, ReadConfig(sc.getConf))
 
   /**
    * Creates a MongoRDD
    *
    * @param sc the Spark context
-   * @param connector the MongoConnector
-   * @param splitKey the SplitKey
-   * @param maxChunkSize the maximum chunksize
+   * @param readConfig the [[com.mongodb.spark.conf.ReadConfig]]
    * @tparam D the type of Document to return
    * @return a MongoRDD
    */
-  def apply[D: ClassTag](sc: SparkContext, connector: MongoConnector, splitKey: String, maxChunkSize: Int): MongoRDD[D] = {
-    MongoSplitKeyRDD(sc, connector, splitKey, maxChunkSize)
-  }
+  def apply[D: ClassTag](sc: SparkContext, readConfig: ReadConfig): MongoRDD[D] = apply(sc, MongoConnector(sc.getConf), readConfig)
+
+  /**
+   * Creates a MongoRDD
+   *
+   * @param sc the Spark context
+   * @param connector the [[com.mongodb.spark.MongoConnector]]
+   * @param readConfig the [[com.mongodb.spark.conf.ReadConfig]]
+   * @tparam D the type of Document to return
+   * @return a MongoRDD
+   */
+  def apply[D: ClassTag](sc: SparkContext, connector: MongoConnector, readConfig: ReadConfig): MongoRDD[D] =
+    MongoSplitKeyRDD(sc, connector, readConfig)
 
 }
 
@@ -91,7 +98,9 @@ abstract class MongoRDD[D: ClassTag](@transient sc: SparkContext, dep: Seq[Depen
    */
   type Self <: MongoRDD[D]
 
-  private[spark] def connector: Broadcast[MongoConnector]
+  private[spark] val connector: Broadcast[MongoConnector]
+
+  private[spark] val readConfig: ReadConfig
 
   protected def mongoPartitioner: MongoPartitioner
 
@@ -116,9 +125,9 @@ abstract class MongoRDD[D: ClassTag](@transient sc: SparkContext, dep: Seq[Depen
    * Allows to copying of this RDD with changing some of the properties
    */
   protected def copy(
-    connector:        Broadcast[MongoConnector] = connector,
-    mongoPartitioner: MongoPartitioner          = mongoPartitioner,
-    pipeline:         Seq[Bson]                 = pipeline
+    connector:  Broadcast[MongoConnector] = connector,
+    readConfig: ReadConfig                = readConfig,
+    pipeline:   Seq[Bson]                 = pipeline
   ): Self
 
   protected def checkSparkContext(): Unit = {

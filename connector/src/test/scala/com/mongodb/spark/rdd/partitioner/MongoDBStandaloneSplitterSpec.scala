@@ -21,22 +21,21 @@ import org.scalatest.FlatSpec
 import org.bson.Document
 import org.bson.types.{MaxKey, MinKey}
 import com.mongodb.spark.RequiresMongoDB
+import com.mongodb.spark.conf.ReadConfig
 
 class MongoDBStandaloneSplitterSpec extends FlatSpec with RequiresMongoDB {
 
   "MongoDBStandaloneSplitter" should "split the database as expected" in {
     if (isSharded) cancel("Sharded MongoDB")
+    loadSampleData(5)
 
-    loadSampleData(collectionName, 5)
-
-    MongoStandaloneSplitter(mongoConnector, "_id", 4).bounds().size shouldBe 3
-    MongoStandaloneSplitter(mongoConnector, "_id", 5).bounds().size shouldBe 1
+    MongoStandaloneSplitter(mongoConnector, readConfig.copy(maxChunkSize = 4)).bounds().size shouldBe 3
+    MongoStandaloneSplitter(mongoConnector, readConfig.copy(maxChunkSize = 5)).bounds().size shouldBe 1
   }
 
   it should "have a default bounds of min to max key" in {
     collection.insertOne(new Document())
-
     val expectedBounds: Document = new Document("_id", new Document("$gte", new MinKey).append("$lt", new MaxKey))
-    MongoStandaloneSplitter(mongoConnector, "_id", 1).bounds() should contain theSameElementsAs Seq(expectedBounds)
+    MongoStandaloneSplitter(mongoConnector, readConfig.copy(maxChunkSize = 1)).bounds() should contain theSameElementsAs Seq(expectedBounds)
   }
 }

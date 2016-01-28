@@ -24,21 +24,22 @@ import org.bson.types.{MaxKey, MinKey}
 import com.mongodb.MongoNotPrimaryException
 import com.mongodb.client.MongoCollection
 import com.mongodb.spark.MongoConnector
+import com.mongodb.spark.conf.ReadConfig
 import com.mongodb.spark.exceptions.MongoSplitException
 
-private[partitioner] case class MongoStandaloneSplitter(connector: MongoConnector, splitKey: String, maxChunkSize: Int) extends MongoSplitter {
+private[partitioner] case class MongoStandaloneSplitter(connector: MongoConnector, readConfig: ReadConfig) extends MongoSplitter {
 
   override def bounds(): Seq[Document] = {
-    val collection: MongoCollection[Document] = connector.collection()
+    val collection: MongoCollection[Document] = connector.collection(readConfig.databaseName, readConfig.collectionName)
     val ns: String = collection.getNamespace.getFullName
     logDebug(s"Getting split bounds for a non-sharded collection: $ns")
 
-    val keyPattern: Document = new Document(splitKey, 1)
+    val keyPattern: Document = new Document(readConfig.splitKey, 1)
     val splitVectorCommand: Document = new Document("splitVector", ns)
       .append("keyPattern", keyPattern)
-      .append("maxChunkSize", maxChunkSize)
+      .append("maxChunkSize", readConfig.maxChunkSize)
 
-    Try(connector.getDatabase().runCommand(splitVectorCommand)) match {
+    Try(connector.getDatabase(readConfig.databaseName).runCommand(splitVectorCommand)) match {
       case Success(result: Document) => createSplits(result)
       case Failure(e: MongoNotPrimaryException) => {
         logInfo(s"Splitting failed: '${e.getMessage}'. Continuing with a single partition.")
@@ -58,9 +59,9 @@ private[partitioner] case class MongoStandaloneSplitter(connector: MongoConnecto
               |If this is undesirable try lowering 'maxChunkSize' to produce more partitions.""".stripMargin.replaceAll("\n", " ")
           )
         }
-        val minToMaxSplitKeys: Seq[Document] = new Document(splitKey, new MinKey) +: splitKeys :+ new Document(splitKey, new MaxKey)
+        val minToMaxSplitKeys: Seq[Document] = new Document(readConfig.splitKey, new MinKey) +: splitKeys :+ new Document(readConfig.splitKey, new MaxKey)
         val splitKeyPairs: Seq[(Document, Document)] = minToMaxSplitKeys zip minToMaxSplitKeys.tail
-        splitKeyPairs.map(x => createBoundaryQuery(splitKey, x._1.get(splitKey), x._2.get(splitKey)))
+        splitKeyPairs.map(x => createBoundaryQuery(readConfig.splitKey, x._1.get(readConfig.splitKey), x._2.get(readConfig.splitKey)))
       case _ => throw new MongoSplitException(s"""Could not calculate standalone splits. Server errmsg: ${result.get("errmsg")}""")
     }
   }

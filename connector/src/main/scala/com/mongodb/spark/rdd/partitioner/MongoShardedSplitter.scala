@@ -23,15 +23,16 @@ import org.bson.types.{MaxKey, MinKey}
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.{Filters, Projections}
 import com.mongodb.spark.MongoConnector
+import com.mongodb.spark.conf.ReadConfig
 
-private[partitioner] case class MongoShardedSplitter(connector: MongoConnector, splitKey: String) extends MongoSplitter {
+private[partitioner] case class MongoShardedSplitter(connector: MongoConnector, readConf: ReadConfig) extends MongoSplitter {
 
   override def bounds(): Seq[Document] = {
-    val collection: MongoCollection[Document] = connector.collection()
+    val collection: MongoCollection[Document] = connector.collection(readConf.databaseName, readConf.collectionName)
     val ns: String = collection.getNamespace.getFullName
     logDebug(s"Getting split bounds for a sharded collection: $ns")
 
-    val chunks: Seq[Document] = connector.mongoClient.getDatabase("config").getCollection("chunks")
+    val chunks: Seq[Document] = connector.collection("config", "chunks")
       .find(Filters.eq("ns", ns)).projection(Projections.include("min", "max"))
       .into(new java.util.ArrayList[Document]).asScala
 
@@ -42,11 +43,11 @@ private[partitioner] case class MongoShardedSplitter(connector: MongoConnector, 
              |Continuing with a single partition.
              |To split the collections into multiple partitions connect to the MongoDB node directly""".stripMargin.replaceAll("\n", " ")
         )
-        Seq(createBoundaryQuery(splitKey, new MinKey, new MaxKey))
+        Seq(createBoundaryQuery(readConf.splitKey, new MinKey, new MaxKey))
       case false => chunks.map(x => createBoundaryQuery(
-        splitKey,
-        x.get[Document]("min", classOf[Document]).get(splitKey),
-        x.get[Document]("max", classOf[Document]).get(splitKey)
+        readConf.splitKey,
+        x.get[Document]("min", classOf[Document]).get(readConf.splitKey),
+        x.get[Document]("max", classOf[Document]).get(readConf.splitKey)
       ))
     }
   }
