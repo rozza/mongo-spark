@@ -19,7 +19,7 @@ package com.mongodb.spark.exceptions
 import com.mongodb.MongoException
 
 /**
- * A class for exceptions that come when creating a [[com.mongodb.MongoClient]].
+ * A class for exceptions that come when creating a `com.mongodb.MongoClient`.
  */
 class MongoClientCreationException(message: String, throwable: Throwable) extends MongoException(message, throwable) {
 

@@ -25,7 +25,7 @@ import com.mongodb.spark.DefaultHelper.DefaultsTo
 import com.mongodb.spark.rdd.{MongoRDD, MongoSplitKeyRDD}
 
 /**
- * Helpers to create [[MongoRDD]] in the current [[SparkContext]].
+ * Helpers to create [[com.mongodb.spark.rdd.MongoRDD]] in the current `SparkContext`.
  *
  * @param sc the Spark context
  * @since 1.0
