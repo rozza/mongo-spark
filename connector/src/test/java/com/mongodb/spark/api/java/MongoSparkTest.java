@@ -21,6 +21,12 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.catalyst.JavaTypeInference;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.Test;
@@ -29,15 +35,18 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.apache.spark.sql.types.DataTypes.createStructField;
+import static org.apache.spark.sql.types.DataTypes.createStructType;
 import static org.junit.Assert.assertEquals;
 
 public final class MongoSparkTest extends RequiresMongoDB {
 
+    List<Document> counters = asList(Document.parse("{counter: 0}"), Document.parse("{counter: 1}"), Document.parse("{counter: 2}"));
+
     @Test
     public void shouldBeCreatableFromTheSparkContext() {
         JavaSparkContext sc = new JavaSparkContext(getSparkContext());
-        MongoSpark.save(sc.parallelize(asList(Document.parse("{counter: 0}"), Document.parse("{counter: 1}"),
-                Document.parse("{counter: 2}"))));
+        MongoSpark.save(sc.parallelize(counters));
         JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
 
         assertEquals(mongoRDD.count(), 3);
@@ -60,8 +69,7 @@ public final class MongoSparkTest extends RequiresMongoDB {
     @Test
     public void shouldBeAbleToQueryViaAPipeLine() {
         JavaSparkContext sc = new JavaSparkContext(getSparkContext());
-        MongoSpark.save(sc.parallelize(asList(Document.parse("{counter: 0}"), Document.parse("{counter: 1}"),
-                Document.parse("{counter: 2}"))));
+        MongoSpark.save(sc.parallelize(counters));
         JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
 
         assertEquals(mongoRDD.withPipeline(singletonList(Document.parse("{$match: { counter: {$gt: 0}}}"))).count(), 2);
@@ -78,4 +86,58 @@ public final class MongoSparkTest extends RequiresMongoDB {
 
         assertEquals(mongoRDD.count(), 3);
     }
+
+    @Test
+    public void shouldBeAbleToCreateADataFrameByInferringTheSchema() {
+        // Given
+        JavaSparkContext sc = new JavaSparkContext(getSparkContext());
+        MongoSpark.save(sc.parallelize(counters));
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
+
+        StructField _idField = createStructField("_id", DataTypes.StringType, true);
+        StructField countField = createStructField("counter", DataTypes.IntegerType, true);
+        StructType expectedSchema = createStructType(asList(_idField, countField));
+
+        // when
+        DataFrame dataFrame = mongoRDD.toDF();
+
+        // then
+        assertEquals(dataFrame.schema(), expectedSchema);
+        assertEquals(dataFrame.count(), 3);
+    }
+
+    @Test
+    public void shouldBeAbleToCreateADataFrameUsingJavaBean() {
+        // Given
+        JavaSparkContext sc = new JavaSparkContext(getSparkContext());
+        MongoSpark.save(sc.parallelize(counters));
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
+
+        StructType expectedSchema = (StructType) JavaTypeInference.inferDataType(Counter.class)._1();
+
+        // when
+        DataFrame dataFrame = mongoRDD.toDF(Counter.class);
+
+        // then
+        assertEquals(dataFrame.schema(), expectedSchema);
+        assertEquals(dataFrame.count(), 3);
+    }
+
+    @Test
+    public void shouldBeAbleToCreateADatasetUsingJavaBean() {
+        // Given
+        JavaSparkContext sc = new JavaSparkContext(getSparkContext());
+        MongoSpark.save(sc.parallelize(counters));
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
+
+        StructType expectedSchema = (StructType) JavaTypeInference.inferDataType(Counter.class)._1();
+
+        // when
+        Dataset<Counter> dataset = mongoRDD.toDS(Counter.class);
+
+        // then
+        assertEquals(dataset.schema(), expectedSchema);
+        assertEquals(dataset.count(), 3);
+    }
+
 }

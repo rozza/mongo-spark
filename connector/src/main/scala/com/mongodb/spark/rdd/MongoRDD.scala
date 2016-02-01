@@ -17,18 +17,23 @@
 package com.mongodb.spark.rdd
 
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Encoders, DataFrame, Dataset, SQLContext}
 
-import org.bson.Document
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.conversions.Bson
-import com.mongodb.spark.MongoConnector
+import org.bson.{BsonDocument, Document}
 import com.mongodb.spark.conf.ReadConfig
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD
 import com.mongodb.spark.rdd.partitioner.MongoPartitioner
+import com.mongodb.spark.sql.MongoInferSchema
+import com.mongodb.spark.sql.MongoRelationHelper.documentToRow
+import com.mongodb.spark.{MongoConnector, NotNothing}
 
 /**
  * The MongoRDD companion object
@@ -108,7 +113,52 @@ abstract class MongoRDD[D: ClassTag](@transient sc: SparkContext, dep: Seq[Depen
 
   override def toJavaRDD(): JavaMongoRDD[D] = JavaMongoRDD(this)
 
-  // TODO - to Dataframe?
+  /**
+   * Creates a `DataFrame` based on the schema derived from the optional type.
+   *
+   * '''Note:''' Prefer [[toDS[T<:Product]()*]] as computations will be more efficient.
+   *
+   * @tparam T The optional type of the data from MongoDB, if not provided the schema will be inferred from the collection
+   * @return a DataFrame
+   */
+  def toDF[T <: Product: TypeTag](): DataFrame = {
+    val schema: StructType = MongoInferSchema.reflectSchema[T]() match {
+      case Some(reflectedSchema) => reflectedSchema
+      case None                  => MongoInferSchema(MongoRDD[BsonDocument](sc, connector.value, readConfig).withPipeline(pipeline))
+    }
+    toDF(schema)
+  }
+
+  /**
+   * Creates a `DataFrame` based on the schema derived from the bean class.
+   *
+   * '''Note:''' Prefer [[toDS[T](beanClass:Class[T])*]] as computations will be more efficient.
+   *
+   * @param beanClass encapsulating the data from MongoDB
+   * @tparam T The bean class type to shape the data from MongoDB into
+   * @return a DataFrame
+   */
+  def toDF[T](beanClass: Class[T]): DataFrame = toDF(MongoInferSchema.reflectSchema[T](beanClass))
+
+  /**
+   * Creates a `Dataset` from the collection strongly typed to the provided case class.
+   *
+   * @tparam T The type of the data from MongoDB
+   * @return
+   */
+  def toDS[T <: Product: TypeTag: NotNothing](): Dataset[T] = {
+    val dataFrame: DataFrame = toDF[T]()
+    import dataFrame.sqlContext.implicits._
+    dataFrame.as[T]
+  }
+
+  /**
+   * Creates a `Dataset` from the RDD strongly typed to the provided java bean.
+   *
+   * @tparam T The type of the data from MongoDB
+   * @return
+   */
+  def toDS[T](beanClass: Class[T]): Dataset[T] = toDF[T](beanClass).as(Encoders.bean(beanClass))
 
   /**
    * Returns a copy with the specified aggregation pipeline
@@ -139,6 +189,11 @@ abstract class MongoRDD[D: ClassTag](@transient sc: SparkContext, dep: Seq[Depen
       |SparkContext is not Serializable, therefore it deserializes to null.
       |RDD transformations are not allowed inside lambdas used in other RDD transformations.""".stripMargin
     )
+  }
+
+  private def toDF(schema: StructType): DataFrame = {
+    val rowRDD = MongoRDD[Document](sc, connector.value, readConfig).withPipeline(pipeline).map(doc => documentToRow(doc, schema, Array()))
+    new SQLContext(sc).createDataFrame(rowRDD, schema)
   }
 
 }

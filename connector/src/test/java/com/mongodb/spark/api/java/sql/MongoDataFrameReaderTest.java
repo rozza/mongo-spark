@@ -84,19 +84,7 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
 
         // When
         JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
-        DataFrame df = new SQLContext(sc).createDataFrame(mongoRDD.map(new Function<Document, Character>() {
-            @Override
-            public Character call(final Document doc) throws Exception {
-                Character character = new Character();
-                if (doc.containsKey("age")) {
-                    character.setAge(doc.getInteger("age"));
-                }
-                if (doc.containsKey("name")) {
-                    character.setName(doc.getString("name"));
-                }
-                return character;
-            }
-        }), Character.class);
+        DataFrame df = mongoRDD.toDF(Character.class);
 
         // Then
         assertEquals(df.schema(), expectedSchema);
