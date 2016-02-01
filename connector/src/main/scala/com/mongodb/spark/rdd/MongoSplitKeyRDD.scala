@@ -26,41 +26,41 @@ import org.bson.Document
 import org.bson.conversions.Bson
 import com.mongodb.client.MongoCursor
 import com.mongodb.spark.MongoConnector
-import com.mongodb.spark.rdd.partitioner.{MongoPartition, MongoPartitioner, MongoSplitKeyPartitioner}
+import com.mongodb.spark.conf.ReadConfig
+import com.mongodb.spark.rdd.partitioner.{MongoPartition, MongoSplitKeyPartitioner}
 
 private[spark] object MongoSplitKeyRDD {
-  val DEFAULT_SPLIT_KEY = "_id"
-  val DEFAULT_MAX_CHUNKSIZE = 64
 
-  def apply[D: ClassTag](sc: SparkContext, connector: MongoConnector, splitKey: String = DEFAULT_SPLIT_KEY,
-                         maxChunkSize: Int = DEFAULT_MAX_CHUNKSIZE, pipeline: List[Bson] = List()): MongoSplitKeyRDD[D] = {
+  def apply[D: ClassTag](sc: SparkContext, connector: MongoConnector, readConf: ReadConfig, pipeline: List[Bson] = List()): MongoSplitKeyRDD[D] = {
     val sharedConnector: Broadcast[MongoConnector] = sc.broadcast(connector)
-    new MongoSplitKeyRDD[D](sc, sharedConnector, MongoSplitKeyPartitioner(maxChunkSize, splitKey), pipeline)
+    new MongoSplitKeyRDD[D](sc, sharedConnector, readConf, pipeline)
   }
 
 }
 
 private[rdd] class MongoSplitKeyRDD[D](
-  @transient val sc:    SparkContext,
-  val connector:        Broadcast[MongoConnector],
-  val mongoPartitioner: MongoPartitioner,
-  val pipeline:         Seq[Bson]
+  @transient val sc: SparkContext,
+  val connector:     Broadcast[MongoConnector],
+  val readConfig:    ReadConfig,
+  val pipeline:      Seq[Bson]
 )(implicit val classTag: ClassTag[D])
     extends MongoRDD[D](sc, Nil) {
 
   override type Self = MongoSplitKeyRDD[D]
 
+  override val mongoPartitioner = MongoSplitKeyPartitioner(readConfig)
+
   override def copy(
-    connector:        Broadcast[MongoConnector] = connector,
-    mongoPartitioner: MongoPartitioner          = mongoPartitioner,
-    pipeline:         Seq[Bson]                 = pipeline
+    connector:  Broadcast[MongoConnector] = connector,
+    readConfig: ReadConfig                = readConfig,
+    pipeline:   Seq[Bson]                 = pipeline
   ): Self = {
 
     checkSparkContext()
     new MongoSplitKeyRDD[D](
       sc = sc,
       connector = connector,
-      mongoPartitioner = mongoPartitioner,
+      readConfig = readConfig,
       pipeline = pipeline
     )
   }
@@ -86,7 +86,7 @@ private[rdd] class MongoSplitKeyRDD[D](
    */
   private def getCursor(partition: MongoPartition): MongoCursor[D] = {
     val partitionPipeline: Seq[Bson] = new Document("$match", partition.queryBounds) +: pipeline
-    connector.value.collection[D]().aggregate(partitionPipeline.asJava).iterator
+    connector.value.collection[D](readConfig.databaseName, readConfig.collectionName).aggregate(partitionPipeline.asJava).iterator
   }
 
 }
