@@ -19,13 +19,13 @@ package com.mongodb.spark.api.java;
 import java.io.Serializable;
 
 public final class Counter implements Serializable {
-    private int count;
+    private int counter;
 
-    public int getCount() {
-        return count;
+    public int getCounter() {
+        return counter;
     }
 
-    public void setCount(final int count) {
-        this.count = count;
+    public void setCounter(final int counter) {
+        this.counter = counter;
     }
 }

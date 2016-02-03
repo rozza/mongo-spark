@@ -18,6 +18,7 @@ package com.mongodb.spark
 
 import org.scalatest.FlatSpec
 
+import org.apache.spark.SparkException
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
@@ -97,5 +98,20 @@ class MongoRDDSpec extends FlatSpec with RequiresMongoDB {
 
     "sc.fromMongoDB().toDS()" shouldNot compile
     "sc.fromMongoDB().toDS[Nothing]()" shouldNot compile
+  }
+
+  it should "throw when creating a Dataset with invalid data" in withSparkContext() { sc =>
+    sc.parallelize(List(Document.parse("{counter: 'a'}"), Document.parse("{counter: 'b'}"))).saveToMongoDB()
+    val dataset: Dataset[Counter] = sc.fromMongoDB().toDS[Counter]()
+
+    import dataset.sqlContext.implicits._
+    an[SparkException] should be thrownBy dataset.map(counter => counter.counter).collectAsList()
+  }
+
+  it should "use default values when creating a Dataset with missing data" in withSparkContext() { sc =>
+    sc.parallelize(List(Document.parse("{name: 'a'}"), Document.parse("{name: 'b'}"))).saveToMongoDB()
+    val dataset: Dataset[Counter] = sc.fromMongoDB().toDS[Counter]()
+    import dataset.sqlContext.implicits._
+    dataset.map(counter => counter.counter).collectAsList() should contain theSameElementsAs List(-1, -1)
   }
 }

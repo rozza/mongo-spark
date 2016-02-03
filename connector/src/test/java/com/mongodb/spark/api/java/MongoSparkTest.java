@@ -19,10 +19,13 @@ package com.mongodb.spark.api.java;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD;
+import org.apache.spark.SparkException;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.catalyst.JavaTypeInference;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
@@ -138,6 +141,50 @@ public final class MongoSparkTest extends RequiresMongoDB {
         // then
         assertEquals(dataset.schema(), expectedSchema);
         assertEquals(dataset.count(), 3);
+        assertEquals(dataset.map(new MapFunction<Counter, Integer>(){
+            @Override
+            public Integer call(final Counter counter) throws Exception {
+                return counter.getCounter();
+            }
+        }, Encoders.INT()).collectAsList(), asList(0, 1, 2));
+    }
+
+    @Test(expected=SparkException.class)
+    public void shouldThrowWhenCreatingADatasetWithInvalidData() {
+        // Given
+        JavaSparkContext sc = new JavaSparkContext(getSparkContext());
+        MongoSpark.save(sc.parallelize(asList(Document.parse("{counter: 'a'}"), Document.parse("{counter: 'b'}"))));
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
+
+        // when
+        Dataset<Counter> dataset = mongoRDD.toDS(Counter.class);
+
+        // then
+        List<Integer> test = dataset.map(new MapFunction<Counter, Integer>() {
+            @Override
+            public Integer call(final Counter counter) throws Exception {
+                return counter.getCounter();
+            }
+        }, Encoders.INT()).collectAsList();
+    }
+
+    @Test
+    public void useDefaultValuesWhenCreatingADatasetWithMissingData() {
+        // Given
+        JavaSparkContext sc = new JavaSparkContext(getSparkContext());
+        MongoSpark.save(sc.parallelize(asList(Document.parse("{name: 'a'}"), Document.parse("{name: 'b'}"))));
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(sc);
+
+        // when
+        Dataset<Counter> dataset = mongoRDD.toDS(Counter.class);
+
+        // then - default values
+        assertEquals(dataset.map(new MapFunction<Counter, Integer>(){
+            @Override
+            public Integer call(final Counter counter) throws Exception {
+                return counter.getCounter();
+            }
+        }, Encoders.INT()).collectAsList(), asList(-1, -1));
     }
 
 }
