@@ -184,7 +184,7 @@ public final class MongoSparkTest extends RequiresMongoDB {
             public Integer call(final Counter counter) throws Exception {
                 return counter.getCounter();
             }
-        }, Encoders.INT()).collectAsList(), asList(-1, -1));
+        }, Encoders.INT()).collectAsList(), asList(null, null));
     }
 
 }

@@ -56,15 +56,10 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
         // Given
         JavaSparkContext sc = new JavaSparkContext(getSparkContext());
         MongoSpark.save(sc.parallelize(characters).map(JsonToDocument));
-
-        StructField _idField = createStructField("_id", DataTypes.StringType, true);
-        StructField nameField = createStructField("name", DataTypes.StringType, true);
-        StructField ageField = createStructField("age", DataTypes.IntegerType, true);
         StructType expectedSchema = createStructType(asList(_idField, ageField, nameField));
 
         // When
-        SQLContext sqlContext = new SQLContext(sc);
-        DataFrame df = sqlContext.read().format("com.mongodb.spark.sql").load();
+        DataFrame df = new SQLContext(sc).read().format("com.mongodb.spark.sql").load();
 
         // Then
         assertEquals(df.schema(), expectedSchema);
@@ -77,9 +72,6 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
         // Given
         JavaSparkContext sc = new JavaSparkContext(getSparkContext());
         MongoSpark.save(sc.parallelize(characters).map(JsonToDocument));
-
-        StructField nameField = createStructField("name", DataTypes.StringType, true);
-        StructField ageField = createStructField("age", DataTypes.IntegerType, false);
         StructType expectedSchema = createStructType(asList(ageField, nameField));
 
         // When
@@ -98,5 +90,9 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
             return Document.parse(json);
         }
     };
+
+    private StructField _idField = createStructField("_id", DataTypes.StringType, true);
+    private StructField nameField = createStructField("name", DataTypes.StringType, true);
+    private StructField ageField = createStructField("age", DataTypes.IntegerType, true);
 
 }

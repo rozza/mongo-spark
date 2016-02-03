@@ -112,6 +112,6 @@ class MongoRDDSpec extends FlatSpec with RequiresMongoDB {
     sc.parallelize(List(Document.parse("{name: 'a'}"), Document.parse("{name: 'b'}"))).saveToMongoDB()
     val dataset: Dataset[Counter] = sc.fromMongoDB().toDS[Counter]()
     import dataset.sqlContext.implicits._
-    dataset.map(counter => counter.counter).collectAsList() should contain theSameElementsAs List(-1, -1)
+    dataset.map(counter => counter.counter).collectAsList() should contain theSameElementsAs List(None, None)
   }
 }

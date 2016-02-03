@@ -20,7 +20,7 @@ import java.io.Serializable;
 
 public class Character implements Serializable {
     private String name;
-    private int age;
+    private Integer age;
 
     public String getName() {
         return name;
@@ -30,11 +30,11 @@ public class Character implements Serializable {
         this.name = name;
     }
 
-    public int getAge() {
+    public Integer getAge() {
         return age;
     }
 
-    public void setAge(int age) {
+    public void setAge(final Integer age) {
         this.age = age;
     }
 }

@@ -16,4 +16,4 @@
 
 package com.mongodb.spark
 
-case class Counter(counter: Int)
+case class Counter(counter: Option[Int])
