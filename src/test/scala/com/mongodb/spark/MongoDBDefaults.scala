@@ -49,11 +49,11 @@ class MongoDBDefaults extends Logging {
       .setMaster("local")
       .setAppName("MongoSparkConnector")
       .set("spark.app.id", "MongoSparkConnector")
-      .set("mongodb.uri", mongoClientURI)
-      .set("mongodb.input.databaseName", DATABASE_NAME)
-      .set("mongodb.input.collectionName", collectionName)
-      .set("mongodb.output.databaseName", DATABASE_NAME)
-      .set("mongodb.output.collectionName", collectionName)
+      .set("spark.mongodb.input.uri", mongoClientURI)
+      .set("spark.mongodb.input.databaseName", DATABASE_NAME)
+      .set("spark.mongodb.input.collectionName", collectionName)
+      .set("spark.mongodb.output.databaseName", DATABASE_NAME)
+      .set("spark.mongodb.output.collectionName", collectionName)
   }
 
   def isMongoDBOnline(): Boolean = Try(mongoClient.listDatabaseNames()).isSuccess
