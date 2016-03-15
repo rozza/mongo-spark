@@ -29,7 +29,7 @@ import com.mongodb.ConnectionString
  *
  * @since 1.0
  */
-trait MongoConfig {
+trait MongoConfig extends Serializable {
 
   /**
    * The type of the `MongoConfig`

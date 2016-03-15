@@ -67,23 +67,13 @@ class ReadConfigSpec extends FlatSpec with Matchers {
     readConfig should equal(expectedReadConfig)
   }
 
-  it should "be able mixin user parameters" in {
+  it should "round trip options" in {
+    val defaultReadConfig = ReadConfig(sparkConf)
     val expectedReadConfig = ReadConfig("db", "collection", 200, 20, "foo", shardedConnectDirectly = true, shardedConnectToMongos = false,
       ReadPreferenceConfig(ReadPreference.secondaryPreferred(new TagSet(List(new Tag("dc", "east"), new Tag("use", "production")).asJava))),
       ReadConcernConfig(ReadConcern.MAJORITY))
 
-    ReadConfig(sparkConf).withOptions(
-      Map(
-        "maxChunkSize" -> "20",
-        "splitKey" -> "foo",
-        "shardedConnectDirectly" -> "true",
-        "shardedConnectToMongos" -> "false",
-        "readPreference.name" -> "secondaryPreferred",
-        "readPreference.tagSets" -> """[{dc: "east", use: "production"}]""",
-        "readConcern.level" -> "majority",
-        "sampleSize" -> "200"
-      )
-    ) should equal(expectedReadConfig)
+    defaultReadConfig.withOptions(expectedReadConfig.asOptions) should equal(expectedReadConfig)
   }
 
   it should "be able to create a map" in {

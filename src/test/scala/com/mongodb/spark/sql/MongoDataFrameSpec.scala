@@ -24,7 +24,7 @@ import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
 
 import org.bson.Document
-import com.mongodb.spark.config.{ReadConfig, WriteConfig}
+import com.mongodb.spark.config.WriteConfig
 import com.mongodb.spark.{RequiresMongoDB, _}
 
 class MongoDataFrameSpec extends FlatSpec with RequiresMongoDB {
@@ -55,7 +55,6 @@ class MongoDataFrameSpec extends FlatSpec with RequiresMongoDB {
     sc.parallelize(characters.map(Document.parse)).saveToMongoDB()
 
     val sqlContext = new SQLContext(sc)
-    val read: ReadConfig = ReadConfig(sc.getConf)
     val df = sqlContext.read.mongo[Character]()
     val reflectedSchema: StructType = ScalaReflection.schemaFor[Character].dataType.asInstanceOf[StructType]
 

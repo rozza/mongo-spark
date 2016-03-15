@@ -88,6 +88,14 @@ object WriteConcernConfig extends MongoOutputConfig {
     new WriteConcernConfig(wOption, wStringOption, journalOption, wTimeoutOption)
   }
 
+  /**
+   * Creates a `WriteConcernConfig` from a `WriteConcern` instance
+   *
+   * @param writeConcern the write concern
+   * @return the configuration
+   */
+  def create(writeConcern: WriteConcern): WriteConcernConfig = apply(writeConcern)
+
   override def create(sparkConf: SparkConf): WriteConcernConfig = apply(sparkConf)
 
   override def create(options: util.Map[String, String]): WriteConcernConfig = apply(options.asScala)

@@ -80,6 +80,5 @@ public final class ReadConfigTest extends RequiresMongoDB {
                 ReadConcernConfig.create(ReadConcern.MAJORITY));
 
         assertEquals(readConfig, expectedReadConfig);
-        assertEquals(readConfig, expectedReadConfig);
     }
 }

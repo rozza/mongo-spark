@@ -44,7 +44,7 @@ package com.mongodb.spark.config
  *  - [[shardedConnectToMongosProperty shardedConnectToMongos]]
  *
  */
-trait MongoInputConfig extends MongoConfig with Serializable {
+trait MongoInputConfig extends MongoConfig {
 
   override val configPrefix = "spark.mongodb.input."
 
