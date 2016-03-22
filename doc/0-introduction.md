@@ -9,32 +9,18 @@ This introduction expects you to have a basic working knowledge of MongoDB and A
 
 Have MongoDB up and running and the Spark 1.6.x downloaded. This tutorial will use the Spark Shell allowing for instant feedback.
 
-### Configuring the Mongo connector
+### Configuring the Mongo Spark Connector
 
 Before loading the Spark Shell and creating the `SparkContext`, the Mongo Connector needs to be configured.  The easiest way is to set 
 the `mongodb.input.uri` and `mongodb.output.uri` properties, which can be used to easily configure the `database` and `collection` as well as 
 the `readPreference`, `readConcern` and `writeConcern`. 
 
 Alternatively, as each connector config option has a specific named property you can set any the properties directly. See the 
-`ReadConfig` or `WriteConfig` classes for more information.
-
-An example configuration for the uri is:
-```
-spark.mongodb.input.uri=mongodb://127.0.0.1/databaseName.collectionName?readPreference=primaryPreferred
-```
-
-Which is the same as:
-```
-spark.mongodb.input.uri=mongodb://127.0.0.1/
-spark.mongodb.input.database=databaseName
-spark.mongodb.input.collection=collectionName
-spark.mongodb.input.readPreference.name=primaryPreferred
-```
+[Configuring](2-configuring.md) documentation for more information.
 
 ### Loading the Spark-Shell
 As the Mongo Spark Connector is currently in pre-release, we'll be using the SNAPSHOT.  The Spark Shell can load Jars from the local maven 
 repository and if not present it can download it from Sonatype. 
-
 
 To load the Spark Shell, set the uri configuration and download the connector run:
 
@@ -45,7 +31,10 @@ To load the Spark Shell, set the uri configuration and download the connector ru
                   --repositories https://oss.sonatype.org/content/repositories/snapshots
 ```
 
-*Note:* If there's an error loading the shell you may need to clear your local ivy cache. 
+------
+**Note:** If there's an error loading the shell you may need to clear your local ivy cache. 
+
+------
 
 
 ## RDD support
@@ -57,8 +46,11 @@ To enable the Mongo Connector specific functions on the `SparkContext` and `RDD`
 import com.mongodb.spark._
 ```
 
-*Note:* Currently, Scala types eg: Lists are not supported and should be converted to their java equivalent.
-To do this use the `.asJava` method which becomes available after `import scala.collection.JavaConverters._`.
+------
+**Note:** Currently, Scala types eg: Lists are not supported and should be converted to their java equivalent.
+To do this use the `.asJava` method which becomes available after `import scala.collection.JavaConverters._`. 
+
+------
 
 ### Saving data from an RDD to MongoDB
 
@@ -144,5 +136,7 @@ println(aggregatedRdd.count)
 println(aggregatedRdd.first.toJson)
 ```
 Any aggregation pipeline is valid and pre aggregating data in MongoDB may be more performant than doing it via Spark.
+
+-----
 
 [Next - Spark SQL](1-sparkSQL.md)
