@@ -21,7 +21,10 @@ spark.mongodb.input.sampleSize             | The sample size to use when inferri
 spark.mongodb.input.splitKey               | The partition key to split the data                               | `_id`
 spark.mongodb.input.maxChunkSize           | The maximum chunk size for partitioning an unsharded collection   | 64 MB
 
-*Note*: When passing input configurations via an options Map then the prefix `spark.mongodb.input.` is not needed.
+-----
+**Note**: When passing input configurations via an options Map then the prefix `spark.mongodb.input.` is not needed.
+
+-----
 
 ## Output Configuration
 
@@ -36,8 +39,10 @@ spark.mongodb.output.writeConcern.w          | The write concern w value        
 spark.mongodb.output.writeConcern.journal    | The write concern journal value                                 |
 spark.mongodb.output.writeConcern.wTimeoutMS | The write concern wTimeout value                                |
 
+-----
+**Note**: When passing output configurations via an options Map then the prefix `spark.mongodb.output.` is not needed.
 
-*Note*: When passing output configurations via an options Map then the prefix `spark.mongodb.output.` is not needed.
+-----
 
 ## Configuring via the uri
 
