@@ -1,8 +1,6 @@
 # Mongo Spark Connector Configuration
 
 The following table describes the various configuration options for the Spark Connector. 
-These configurations are deliberately kept simple all that is required is the uri, the database and collection and name to connect.
-Any configurations via the uri will override any default values, so the uri can be used to configure the ReadPreference or the WriteConcern.
 
 The following connection options can be set via the `SparkConf` object. These are prefixed with `spark.` so that they can be recognized
 from the spark-shell and can be passed via --conf settings or via $SPARK_HOME/conf/spark-default.conf.
@@ -40,3 +38,21 @@ spark.mongodb.output.writeConcern.wTimeoutMS | The write concern wTimeout value 
 
 
 *Note*: When passing output configurations via an options Map then the prefix `spark.mongodb.output.` is not needed.
+
+## Configuring via the uri
+
+These configurations are deliberately kept simple all that is required is the uri, the database and collection and name to connect.
+Any configurations via the uri will override any default values, so the uri can be used to configure the ReadPreference or the WriteConcern.
+
+An example configuration for the uri is:
+```
+spark.mongodb.input.uri=mongodb://127.0.0.1/databaseName.collectionName?readPreference=primaryPreferred
+```
+
+Which is the same as:
+```
+spark.mongodb.input.uri=mongodb://127.0.0.1/
+spark.mongodb.input.database=databaseName
+spark.mongodb.input.collection=collectionName
+spark.mongodb.input.readPreference.name=primaryPreferred
+```
