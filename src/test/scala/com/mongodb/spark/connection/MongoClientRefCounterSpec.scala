@@ -16,35 +16,35 @@
 
 package com.mongodb.spark.connection
 
-import com.mongodb.spark.RequiresMongoDB
+import org.scalatest.{FlatSpec, Matchers}
 
-class MongoClientRefCounterSpec extends RequiresMongoDB {
+class MongoClientRefCounterSpec extends FlatSpec with Matchers {
 
   "MongoClientRefCounter" should "count references as expected" in {
     val counter = new MongoClientRefCounter()
 
-    counter.canAcquire(mongoClient) should equal(false)
-    counter.acquire(mongoClient)
-    counter.canAcquire(mongoClient) should equal(true)
+    counter.canAcquire() should equal(false)
+    counter.acquire()
+    counter.canAcquire() should equal(true)
 
-    counter.release(mongoClient) should equal(1)
-    counter.release(mongoClient) should equal(0)
+    counter.release() should equal(1)
+    counter.release() should equal(0)
 
-    counter.canAcquire(mongoClient) should equal(false)
+    counter.canAcquire() should equal(false)
   }
 
   it should "be able to acquire multiple times" in {
     val counter = new MongoClientRefCounter()
-    counter.acquire(mongoClient)
-    counter.acquire(mongoClient)
-    counter.release(mongoClient, 2) should equal(0)
+    counter.acquire()
+    counter.acquire()
+    counter.release(2) should equal(0)
   }
 
   it should "throw an exception for invalid releases of a MongoClient" in {
     val counter = new MongoClientRefCounter()
-    an[IllegalStateException] should be thrownBy counter.release(mongoClient)
+    an[IllegalStateException] should be thrownBy counter.release()
 
-    counter.acquire(mongoClient)
-    an[IllegalStateException] should be thrownBy counter.release(mongoClient, 2)
+    counter.acquire()
+    an[IllegalStateException] should be thrownBy counter.release(2)
   }
 }

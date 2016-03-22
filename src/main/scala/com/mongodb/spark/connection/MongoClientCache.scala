@@ -18,76 +18,67 @@
 //scalastyle:on
 package com.mongodb.spark.connection
 
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
+
+import com.mongodb.MongoClient
+import com.mongodb.spark.{Logging, MongoClientFactory}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
-import com.mongodb.spark.Logging
-
-import com.mongodb.spark.MongoClientFactory
-import com.mongodb.{MongoClient, ServerAddress}
-
 /**
- * A lockless cache for MongoClients.
+ * A lockless cache for a MongoClient.
  *
- * Allows multiple users access to MongoClients. Closes a `MongoClient` when they're are no longer used.
+ * Allows multiple users access to a MongoClient. Closes the `MongoClient` when they're are no longer used.
  *
- * @param keepAlive the duration to keep alive any given MongoClient so that it can be reused by another consumer
+ * @param keepAlive the duration to keep alive a MongoClient so that it can be reused by another consumer
  */
 private[spark] final class MongoClientCache(keepAlive: Duration) extends Logging {
 
   private val refCounter = new MongoClientRefCounter
-  private val cache = new TrieMap[Option[ServerAddress], MongoClient]
-  private val clientToKey = new TrieMap[MongoClient, Option[ServerAddress]]
-  private val deferredReleases = new TrieMap[MongoClient, ReleaseTask]
+  private val cache = new AtomicReference[MongoClient]()
+  private val deferredReleases = new AtomicReference[ReleaseTask]
 
-  // scalastyle:off cyclomatic.complexity
   @tailrec
-  def acquire(key: Option[ServerAddress], mongoClientFactory: MongoClientFactory): MongoClient = {
-    cache.get(key) match {
+  def acquire(mongoClientFactory: MongoClientFactory): MongoClient = {
+    Option(cache.get) match {
       case Some(mongoClient) =>
-        refCounter.canAcquire(mongoClient) match {
+        refCounter.canAcquire() match {
           case true  => mongoClient
-          case false => acquire(key, mongoClientFactory)
+          case false => acquire(mongoClientFactory)
         }
       case None =>
-        val createdMongoClient = key match {
-          case Some(serverAddress) => mongoClientFactory.withServerAddress(serverAddress).create()
-          case None                => mongoClientFactory.create()
-        }
+        val createdMongoClient = mongoClientFactory.create()
         logClient(createdMongoClient)
-        refCounter.acquire(createdMongoClient)
-        cache.putIfAbsent(key, createdMongoClient) match {
-          case None =>
-            clientToKey.put(createdMongoClient, key)
+        cache.compareAndSet(null, createdMongoClient) match { // scalastyle:ignore
+          case true =>
+            refCounter.acquire()
             createdMongoClient
-          case Some(existingMongoClient) =>
+          case false =>
             logClient(createdMongoClient, closing = true)
             createdMongoClient.close()
-            refCounter.release(createdMongoClient)
-            refCounter.canAcquire(existingMongoClient) match {
-              case true  => existingMongoClient
-              case false => acquire(key, mongoClientFactory)
-            }
+            acquire(mongoClientFactory)
         }
     }
   }
-  // scalastyle:on cyclomatic.complexity
 
   /**
    * Releases previously acquired mongoClient. Once the mongoClient is released by all threads and
    * the `releaseDelayMillis` timeout passes, the mongoClient is destroyed by calling `destroy` function and
    * removed from the cache.
    */
-  def release(mongoClient: MongoClient, releaseDelay: Duration = keepAlive) {
-    if (releaseDelay.toMillis == 0 || scheduledExecutorService.isShutdown) {
-      releaseImmediately(mongoClient)
-    } else {
-      releaseDeferred(mongoClient, releaseDelay, 1)
+  def release(releaseDelay: Duration = keepAlive) {
+    Option(cache.get) match {
+      case Some(client) =>
+        if (releaseDelay.toMillis == 0 || scheduledExecutorService.isShutdown) {
+          releaseImmediately()
+        } else {
+          releaseDeferred(releaseDelay, 1)
+        }
+      case None =>
     }
   }
 
@@ -96,53 +87,43 @@ private[spark] final class MongoClientCache(keepAlive: Duration) extends Logging
    */
   def shutdown() {
     scheduledExecutorService.shutdown()
-    while (deferredReleases.nonEmpty) {
-      for ((mongoClient, task) <- deferredReleases.snapshot()) {
-        if (deferredReleases.remove(mongoClient, task)) {
-          task.run()
-        }
-      }
+    Option(deferredReleases.getAndSet(null)) match { // scalastyle:ignore
+      case Some(releaseTask) =>
+        releaseTask.run()
+      case None =>
     }
   }
 
-  private def releaseImmediately(mongoClient: MongoClient, count: Int = 1): Unit = {
-    Try(refCounter.release(mongoClient, count)) match {
+  private def releaseImmediately(count: Int = 1): Unit = {
+    Try(refCounter.release(count)) match {
       case Success(0) =>
-        cache.remove(clientToKey(mongoClient))
-        clientToKey.remove(mongoClient)
-        logClient(mongoClient, closing = true)
-        mongoClient.close()
+        Option(cache.getAndSet(null)) match { // scalastyle:ignore
+          case Some(mongoClient) =>
+            logClient(mongoClient, closing = true)
+            mongoClient.close()
+          case None =>
+        }
       case Failure(e) => logWarning(e.getMessage)
       case _          =>
     }
   }
 
-  @tailrec
-  private def releaseDeferred(mongoClient: MongoClient, releaseDelay: Duration, count: Int): Unit = {
-    val newTime = System.currentTimeMillis() + releaseDelay.toMillis
-    val newTask = deferredReleases.remove(mongoClient) match {
-      case Some(oldTask) => ReleaseTask(mongoClient, oldTask.count + count, math.max(oldTask.scheduledTime, newTime))
-      case None          => ReleaseTask(mongoClient, count, newTime)
+  private def releaseDeferred(releaseDelay: Duration, count: Int): Unit = {
+    val newTime = System.nanoTime() + releaseDelay.toNanos
+    Option(deferredReleases.get) match {
+      case Some(oldTask) => deferredReleases.compareAndSet(oldTask, ReleaseTask(oldTask.count + count, math.max(oldTask.scheduledTime, newTime)))
+      case None          => deferredReleases.compareAndSet(null, ReleaseTask(count, newTime)) // scalastyle:ignore
     }
-    deferredReleases.putIfAbsent(mongoClient, newTask) match {
-      case Some(oldTask) => releaseDeferred(mongoClient, releaseDelay, newTask.count)
-      case None          =>
-    }
-  }
-
-  /**
-   * Called periodically by `scheduledExecutorService`
-   */
-  private def processPendingReleases() {
-    val now = System.currentTimeMillis()
-    for ((mongoClient, task) <- deferredReleases)
-      if (task.scheduledTime <= now)
-        if (deferredReleases.remove(mongoClient, task)) task.run()
   }
 
   private val processPendingReleasesTask = new Runnable() {
     override def run() {
-      processPendingReleases()
+      val now = System.nanoTime()
+      Option(deferredReleases.getAndSet(null)) match { // scalastyle:ignore
+        case Some(releaseTask) if releaseTask.scheduledTime <= now => releaseTask.run()
+        case Some(releaseTask) => deferredReleases.compareAndSet(null, releaseTask) // scalastyle:ignore
+        case _ =>
+      }
     }
   }
 
@@ -159,9 +140,9 @@ private[spark] final class MongoClientCache(keepAlive: Duration) extends Logging
   private val period = 100
   scheduledExecutorService.scheduleAtFixedRate(processPendingReleasesTask, period, period, TimeUnit.MILLISECONDS)
 
-  private case class ReleaseTask(mongoClient: MongoClient, count: Int, scheduledTime: Long) extends Runnable {
+  private case class ReleaseTask(count: Int, scheduledTime: Long) extends Runnable {
     override def run() {
-      releaseImmediately(mongoClient, count)
+      releaseImmediately(count)
     }
   }
 

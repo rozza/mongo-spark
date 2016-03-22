@@ -34,46 +34,46 @@ class MongoClientCacheSpec extends RequiresMongoDB with MockFactory {
   val clientFactory = DefaultMongoClientFactory(mongoClientURI)
 
   "MongoClientCache" should "create a client and then close the client once released" in {
-    val client = clientCache.acquire(None, clientFactory)
-    clientCache.release(client, zeroDuration)
+    val client = clientCache.acquire(clientFactory)
+    clientCache.release(zeroDuration)
     client.cluster.isClosed should be(true)
   }
 
   it should "create a client and then close the client once released and after the timeout" in {
-    val client = clientCache.acquire(None, clientFactory)
-    clientCache.release(client)
+    val client = clientCache.acquire(clientFactory)
+    clientCache.release()
     client.cluster.isClosed should be(false)
     Thread.sleep(keepAlive.toMillis * 2)
     client.cluster.isClosed should be(true)
   }
 
   it should "return a different client once released " in {
-    val client = clientCache.acquire(None, clientFactory)
-    val client2 = clientCache.acquire(None, clientFactory)
+    val client = clientCache.acquire(clientFactory)
+    val client2 = clientCache.acquire(clientFactory)
 
     client2 should be theSameInstanceAs client
 
-    clientCache.release(client, zeroDuration)
-    clientCache.release(client2, zeroDuration)
+    clientCache.release(zeroDuration)
+    clientCache.release(zeroDuration)
 
-    val client3 = clientCache.acquire(None, clientFactory)
+    val client3 = clientCache.acquire(clientFactory)
 
     client3 should not be theSameInstanceAs(client)
-    clientCache.release(client3, zeroDuration)
+    clientCache.release(zeroDuration)
   }
 
   it should "not throw an exception when trying to release unacquired client" in {
-    clientCache.release(mongoClient, zeroDuration)
-    clientCache.release(mongoClient)
+    clientCache.release(zeroDuration)
+    clientCache.release()
     Thread.sleep(keepAlive.toMillis * 2)
   }
 
   it should "eventually close all released clients on shutdown" in {
-    val client = clientCache.acquire(None, clientFactory)
-    val client2 = clientCache.acquire(Option(client.getAddress), clientFactory)
+    val client = clientCache.acquire(clientFactory)
+    val client2 = clientCache.acquire(clientFactory)
 
-    clientCache.release(client, longDuration)
-    clientCache.release(client2, longDuration)
+    clientCache.release(longDuration)
+    clientCache.release(longDuration)
 
     clientCache.shutdown()
 
