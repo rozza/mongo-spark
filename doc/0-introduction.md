@@ -56,8 +56,11 @@ To do this use the `.asJava` method which becomes available after `import scala.
 
 As this is a quick tour, we'll save some data via Spark into MongoDB.
 
-*Note:* When saving `RDD` data into MongoDB, it must be a type that can be converted into a Bson document. 
+------
+**Note:** When saving `RDD` data into MongoDB, it must be a type that can be converted into a Bson document. 
 You may have add a `map` step to transform the data into a `Document` (or `BsonDocument` a `DBObject`).
+
+------
 
 Add Documents to the collection:
 
@@ -85,7 +88,7 @@ sparkDocuments.saveToMongoDB(writeConfig)
 
 ### Loading and analyzing data from MongoDB
 
-Now we have some data in MongoDB we can use the `sc.loadFromMongoDB` method to create an `RDD` representing a collection:
+Now we have some data in MongoDB we can use the `sc.loadFromMongoDB` implicit method to create an `RDD` representing a collection:
 
 ```scala
 val rdd = sc.loadFromMongoDB()
@@ -111,7 +114,7 @@ println(customRdd.first.toJson)
 
 ### Aggregations
 
-Spark RDDs only support two types of operations: *transformations* and *actions*. 
+Spark RDDs only support two types of operations: *Transformations* and *Actions*. 
 Transformations such as mapping or filtering are saved and only applied once an action such as loading data is called.
 
 With RDD's its important to understand what data from MongoDB is loaded into Spark. Filtering data may seen a simple transformation but it 
