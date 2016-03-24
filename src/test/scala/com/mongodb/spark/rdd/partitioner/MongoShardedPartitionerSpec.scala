@@ -16,6 +16,7 @@
 
 package com.mongodb.spark.rdd.partitioner
 
+import com.mongodb.MongoException
 import com.mongodb.spark.RequiresMongoDB
 import org.bson.{BsonDocument, BsonMaxKey, BsonMinKey, Document}
 import org.scalatest.prop.PropertyChecks
@@ -59,6 +60,11 @@ class MongoShardedPartitionerSpec extends RequiresMongoDB with PropertyChecks {
   it should "return distinct hosts" in {
     val hosts = MongoShardedPartitioner.getHosts("tic/sh0.example.com:27018,sh0.example.com:27019,sh0.example.com:27020")
     hosts should contain theSameElementsInOrderAs Seq("sh0.example.com")
+  }
+
+  it should "throw an error with invalid hosts" in {
+    an[MongoException] should be thrownBy MongoShardedPartitioner.getHosts("alpha::12")
+    an[MongoException] should be thrownBy MongoShardedPartitioner.getHosts("alpha:brava")
   }
 
   it should "calculate the expected Partitions" in {
