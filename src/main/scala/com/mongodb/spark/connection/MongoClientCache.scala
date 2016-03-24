@@ -42,6 +42,12 @@ private[spark] final class MongoClientCache(keepAlive: Duration) extends Logging
   private val cache = new AtomicReference[MongoClient]()
   private val deferredReleases = new AtomicReference[ReleaseTask]
 
+  /**
+    * Acquires a `MongoClient`, if one is not cached then uses the factory to create one.
+    *
+    * @param mongoClientFactory the `MongoClientFactory`
+    * @return a MongoClient
+    */
   @tailrec
   def acquire(mongoClientFactory: MongoClientFactory): MongoClient = {
     Option(cache.get) match {
