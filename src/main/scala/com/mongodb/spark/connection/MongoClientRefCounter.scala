@@ -18,27 +18,35 @@
 //scalastyle:on
 package com.mongodb.spark.connection
 
-import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
+
+import com.mongodb.MongoClient
 
 /**
  * Atomically counts references to MongoClients
  */
 private class MongoClientRefCounter {
 
-  private val mongoClientCounts = new AtomicInteger(0)
+  private val mongoClientCounts = new TrieMap[MongoClient, Int]
 
   /**
    * Indicates if the `MongoClient` can be acquired.
    *
    * Atomically increases reference count only if the reference counter is already greater than 0.
    *
+   * @param key the key to acquire
    * @return true if the `MongoClient` can be acquired
    */
-  final def canAcquire(): Boolean = {
-    mongoClientCounts.get() match {
-      case count if count > 0 =>
-        mongoClientCounts.getAndIncrement()
-        true
+  @tailrec
+  final def canAcquire(key: MongoClient): Boolean = {
+    mongoClientCounts.get(key) match {
+      case Some(count) if count > 0 =>
+        if (mongoClientCounts.replace(key, count, count + 1)) {
+          true
+        } else {
+          canAcquire(key)
+        }
       case _ => false
     }
   }
@@ -46,9 +54,17 @@ private class MongoClientRefCounter {
   /**
    * Acquires the `MongoClient`
    *
-   * Atomically sets the counter to one
+   * Atomically increases reference count by one.
+   *
+   * @param key the key to acquire
    */
-  final def acquire(): Unit = mongoClientCounts.incrementAndGet()
+  @tailrec
+  final def acquire(key: MongoClient): Unit = {
+    mongoClientCounts.get(key) match {
+      case Some(count) => if (!mongoClientCounts.replace(key, count, count + 1)) acquire(key)
+      case None        => if (mongoClientCounts.putIfAbsent(key, 1).isDefined) acquire(key)
+    }
+  }
 
   /**
    * Release the `MongoClient`
@@ -58,10 +74,23 @@ private class MongoClientRefCounter {
    * @throws IllegalStateException if the reference count before decrease is less than `n`
    * @return the MongoClient reference count
    */
-  final def release(n: Int = 1): Int = {
-    require(n > 0, s"Invalid release amount $n, must be greater than 0")
-    val remaining = mongoClientCounts.addAndGet(-n)
-    if (remaining < 0) throw new IllegalStateException("Cannot release the MongoClient when it hasn't been acquired")
-    remaining
+  @tailrec
+  final def release(key: MongoClient, n: Int = 1): Int = {
+    mongoClientCounts.get(key) match {
+      case Some(count) if count > n =>
+        if (mongoClientCounts.replace(key, count, count - n)) {
+          count - n
+        } else {
+          release(key, n)
+        }
+      case Some(count) if count == n =>
+        if (mongoClientCounts.remove(key, n)) {
+          0
+        } else {
+          release(key, n)
+        }
+      case _ => throw new IllegalStateException("Release without acquire for key: " + key)
+    }
   }
+
 }

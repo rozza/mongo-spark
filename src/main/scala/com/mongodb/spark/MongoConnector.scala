@@ -101,7 +101,7 @@ case class MongoConnector(mongoClientFactory: MongoClientFactory)
     try {
       code(client)
     } finally {
-      MongoConnector.mongoClientCache.release()
+      MongoConnector.mongoClientCache.release(client)
     }
   }
 

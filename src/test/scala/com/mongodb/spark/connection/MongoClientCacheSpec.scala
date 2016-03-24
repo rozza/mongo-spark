@@ -35,13 +35,13 @@ class MongoClientCacheSpec extends RequiresMongoDB with MockFactory {
 
   "MongoClientCache" should "create a client and then close the client once released" in {
     val client = clientCache.acquire(clientFactory)
-    clientCache.release(zeroDuration)
+    clientCache.release(client, zeroDuration)
     client.cluster.isClosed should be(true)
   }
 
   it should "create a client and then close the client once released and after the timeout" in {
     val client = clientCache.acquire(clientFactory)
-    clientCache.release()
+    clientCache.release(client)
     client.cluster.isClosed should be(false)
     Thread.sleep(keepAlive.toMillis * 2)
     client.cluster.isClosed should be(true)
@@ -53,18 +53,18 @@ class MongoClientCacheSpec extends RequiresMongoDB with MockFactory {
 
     client2 should be theSameInstanceAs client
 
-    clientCache.release(zeroDuration)
-    clientCache.release(zeroDuration)
+    clientCache.release(client, zeroDuration)
+    clientCache.release(client2, zeroDuration)
 
     val client3 = clientCache.acquire(clientFactory)
 
     client3 should not be theSameInstanceAs(client)
-    clientCache.release(zeroDuration)
+    clientCache.release(client3, zeroDuration)
   }
 
   it should "not throw an exception when trying to release unacquired client" in {
-    clientCache.release(zeroDuration)
-    clientCache.release()
+    clientCache.release(mongoClient, zeroDuration)
+    clientCache.release(mongoClient)
     Thread.sleep(keepAlive.toMillis * 2)
   }
 
@@ -72,8 +72,8 @@ class MongoClientCacheSpec extends RequiresMongoDB with MockFactory {
     val client = clientCache.acquire(clientFactory)
     val client2 = clientCache.acquire(clientFactory)
 
-    clientCache.release(longDuration)
-    clientCache.release(longDuration)
+    clientCache.release(client, longDuration)
+    clientCache.release(client2, longDuration)
 
     clientCache.shutdown()
 
