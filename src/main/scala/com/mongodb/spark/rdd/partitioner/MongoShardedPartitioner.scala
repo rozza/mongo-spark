@@ -48,20 +48,23 @@ private[partitioner] case object MongoShardedPartitioner extends MongoPartitione
         )
         MongoSinglePartitioner.partitions(connector, readConfig)
       case false =>
-        val shardsMap: Map[String, Seq[String]] = mapShards(connector)
-        chunks.zipWithIndex.map({
-          case (chunk: BsonDocument, i: Int) =>
-            MongoPartition(
-              i,
-              PartitionerHelper.createBoundaryQuery(
-                readConfig.splitKey,
-                chunk.getDocument("min").get(readConfig.splitKey),
-                chunk.getDocument("max").get(readConfig.splitKey)
-              ),
-              shardsMap.getOrElse(chunk.getString("shard").getValue, Nil)
-            )
-        }).toArray
+        generatePartitions(chunks, readConfig.splitKey, mapShards(connector))
     }
+  }
+
+  private[partitioner] def generatePartitions(chunks: Seq[BsonDocument], splitKey: String, shardsMap: Map[String, Seq[String]]): Array[MongoPartition] = {
+    chunks.zipWithIndex.map({
+      case (chunk: BsonDocument, i: Int) =>
+        MongoPartition(
+          i,
+          PartitionerHelper.createBoundaryQuery(
+            splitKey,
+            chunk.getDocument("min").get(splitKey),
+            chunk.getDocument("max").get(splitKey)
+          ),
+          shardsMap.getOrElse(chunk.getString("shard").getValue, Nil)
+        )
+    }).toArray
   }
 
   private def mapShards(connector: MongoConnector): Map[String, Seq[String]] = {
