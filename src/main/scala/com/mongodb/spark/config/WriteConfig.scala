@@ -18,10 +18,12 @@ package com.mongodb.spark.config
 
 import java.util
 
-import scala.collection.JavaConverters._
-import org.apache.spark.SparkConf
 import com.mongodb.WriteConcern
+import com.mongodb.spark.notNull
+import org.apache.spark.SparkConf
 import org.apache.spark.api.java.JavaSparkContext
+
+import scala.collection.JavaConverters._
 
 /**
  * The `WriteConfig` companion object
@@ -41,24 +43,66 @@ object WriteConfig extends MongoOutputConfig {
    * @return the write config
    */
   def apply(databaseName: String, collectionName: String, writeConcern: WriteConcern): WriteConfig =
-    new WriteConfig(databaseName, collectionName, WriteConcernConfig(writeConcern))
+    new WriteConfig(databaseName, collectionName, None, WriteConcernConfig(writeConcern))
+
+  /**
+   * Creates a WriteConfig
+   *
+   * @param databaseName the database name
+   * @param collectionName the collection name
+   * @param connectionString the optional connection string used in the creation of this configuration
+   * @param writeConcern the WriteConcern to use
+   * @return the write config
+   */
+  def apply(databaseName: String, collectionName: String, connectionString: String, writeConcern: WriteConcern): WriteConfig =
+    new WriteConfig(databaseName, collectionName, Option(connectionString), WriteConcernConfig(writeConcern))
 
   override def apply(options: collection.Map[String, String], default: Option[WriteConfig]): WriteConfig = {
     val cleanedOptions = prefixLessOptions(options)
     WriteConfig(
       databaseName = databaseName(databaseNameProperty, cleanedOptions, default.map(writeConf => writeConf.databaseName)),
       collectionName = collectionName(collectionNameProperty, cleanedOptions, default.map(writeConf => writeConf.collectionName)),
+      connectionString = cleanedOptions.get(mongoURIProperty).orElse(default.flatMap(conf => conf.connectionString)),
       writeConcernConfig = WriteConcernConfig(cleanedOptions, default.map(writeConf => writeConf.writeConcernConfig))
     )
   }
 
-  override def create(javaSparkContext: JavaSparkContext): WriteConfig = apply(javaSparkContext.getConf)
+  /**
+   * Creates a WriteConfig
+   *
+   * @param databaseName the database name
+   * @param collectionName the collection name
+   * @param connectionString the optional connection string used in the creation of this configuration
+   * @param writeConcern the WriteConcern to use
+   * @return the write config
+   */
+  def create(databaseName: String, collectionName: String, connectionString: String, writeConcern: WriteConcern): WriteConfig = {
+    notNull("databaseName", databaseName)
+    notNull("collectionName", collectionName)
+    notNull("writeConcern", writeConcern)
+    apply(databaseName, collectionName, connectionString, writeConcern)
+  }
 
-  override def create(sparkConf: SparkConf): WriteConfig = apply(sparkConf)
+  override def create(javaSparkContext: JavaSparkContext): WriteConfig = {
+    notNull("javaSparkContext", javaSparkContext)
+    apply(javaSparkContext.getConf)
+  }
 
-  override def create(options: util.Map[String, String]): WriteConfig = apply(options.asScala)
+  override def create(sparkConf: SparkConf): WriteConfig = {
+    notNull("sparkConf", sparkConf)
+    apply(sparkConf)
+  }
 
-  override def create(options: util.Map[String, String], default: WriteConfig): WriteConfig = apply(options.asScala, Option(default))
+  override def create(options: util.Map[String, String]): WriteConfig = {
+    notNull("options", options)
+    apply(options.asScala)
+  }
+
+  override def create(options: util.Map[String, String], default: WriteConfig): WriteConfig = {
+    notNull("options", options)
+    notNull("default", default)
+    apply(options.asScala, Some(default))
+  }
 
 }
 
@@ -67,20 +111,28 @@ object WriteConfig extends MongoOutputConfig {
  *
  * @param databaseName the database name
  * @param collectionName the collection name
+ * @param connectionString the optional connection string used in the creation of this configuration
  * @param writeConcernConfig the write concern configuration
  * @since 1.0
  */
 case class WriteConfig(
     databaseName:                   String,
     collectionName:                 String,
+    connectionString:               Option[String]     = None,
     private val writeConcernConfig: WriteConcernConfig = WriteConcernConfig.Default
-) extends MongoCollectionConfig with MongoSparkConfig {
+) extends MongoCollectionConfig with MongoClassConfig {
 
   type Self = WriteConfig
 
   override def withOptions(options: collection.Map[String, String]): WriteConfig = WriteConfig(options, Some(this))
 
-  override def asOptions: collection.Map[String, String] = Map("database" -> databaseName, "collection" -> collectionName) ++ writeConcernConfig.asOptions
+  override def asOptions: collection.Map[String, String] = {
+    val options = Map("database" -> databaseName, "collection" -> collectionName) ++ writeConcernConfig.asOptions
+    connectionString match {
+      case Some(uri) => options + (WriteConfig.mongoURIProperty -> uri)
+      case None      => options
+    }
+  }
 
   override def withJavaOptions(options: util.Map[String, String]): WriteConfig = withOptions(options.asScala)
 

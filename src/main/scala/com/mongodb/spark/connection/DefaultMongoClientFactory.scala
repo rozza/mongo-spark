@@ -16,11 +16,36 @@
 
 package com.mongodb.spark.connection
 
+import com.mongodb._
 import com.mongodb.spark.MongoClientFactory
-import com.mongodb.{ConnectionString, MongoClient, MongoClientURI, ServerAddress}
+import com.mongodb.spark.config.{MongoSharedConfig, ReadConfig}
 
-private[spark] case class DefaultMongoClientFactory(connectionString: String) extends MongoClientFactory {
-  @transient val parsedConnectionString = new ConnectionString(connectionString)
+import scala.collection.JavaConverters._
+import scala.util.Try
 
-  override def create(): MongoClient = new MongoClient(new MongoClientURI(connectionString))
+private[spark] object DefaultMongoClientFactory {
+  def apply(options: collection.Map[String, String]): DefaultMongoClientFactory = {
+    require(options.contains(MongoSharedConfig.mongoURIProperty), s"Missing '${MongoSharedConfig.mongoURIProperty}' property from options")
+    DefaultMongoClientFactory(options.get(MongoSharedConfig.mongoURIProperty).get, options.get(ReadConfig.localThresholdProperty).map(_.toInt))
+  }
+}
+
+private[spark] case class DefaultMongoClientFactory(connectionString: String, localThreshold: Option[Int] = None) extends MongoClientFactory {
+  require(Try(mongoClientURI).isSuccess, s"Invalid '${MongoSharedConfig.mongoURIProperty}' '$connectionString'")
+
+  def mongoClientURI: MongoClientURI = new MongoClientURI(connectionString)
+
+  override def create(): MongoClient = {
+    val clientURI = mongoClientURI
+    val hosts = clientURI.getHosts.asScala.map(new ServerAddress(_))
+    val credentials = Option(clientURI.getCredentials) match {
+      case Some(credential) => List(credential)
+      case None             => List.empty[MongoCredential]
+    }
+    val clientOptions = localThreshold match {
+      case Some(lt) => MongoClientOptions.builder(clientURI.getOptions).localThreshold(lt).build()
+      case None     => clientURI.getOptions
+    }
+    new MongoClient(hosts.asJava, credentials.asJava, clientOptions)
+  }
 }

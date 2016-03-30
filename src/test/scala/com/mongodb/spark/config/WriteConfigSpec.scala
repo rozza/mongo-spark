@@ -49,9 +49,10 @@ class WriteConfigSpec extends FlatSpec with Matchers {
   }
 
   it should "round trip options" in {
-    val defaultWriteConfig = WriteConfig("dbName", "collName", WriteConcern.ACKNOWLEDGED)
+    val uri = "mongodb://localhost/"
+    val defaultWriteConfig = WriteConfig("dbName", "collName", uri, WriteConcern.ACKNOWLEDGED)
     forAll(writeConcerns) { writeConcern: WriteConcern =>
-      val expectedWriteConfig = WriteConfig("db", "collection", writeConcern)
+      val expectedWriteConfig = WriteConfig("db", "collection", uri, writeConcern)
       defaultWriteConfig.withOptions(expectedWriteConfig.asOptions) should equal(expectedWriteConfig)
     }
   }

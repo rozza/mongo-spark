@@ -14,6 +14,7 @@ Property name                              | Description                        
 spark.mongodb.input.uri                    | The connnection string                                            |
 spark.mongodb.input.database               | The database name to read data from                               |
 spark.mongodb.input.collection             | The collection name to read data from                             |
+spark.mongodb.input.localThreshold         | The threshold for choosing a server from multiple MongoDB servers | 15 ms
 spark.mongodb.input.readPreference.name    | The name of the `ReadPreference` to use                           | Primary
 spark.mongodb.input.readPreference.tagSets | The `ReadPreference` TagSets to use                               |
 spark.mongodb.input.readConcern.level      | The `ReadConcern` level to use                                    |

@@ -39,7 +39,7 @@ package com.mongodb.spark.config
  *  - [[writeConcernWTimeoutMSProperty writeConcern.wTimeoutMS]], the write concern wTimeout value.
  *
  */
-trait MongoOutputConfig extends MongoConfig {
+trait MongoOutputConfig extends MongoCompanionConfig {
 
   override val configPrefix = "spark.mongodb.output."
 

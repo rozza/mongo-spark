@@ -19,7 +19,6 @@ package com.mongodb.spark.api.java.config;
 import com.mongodb.WriteConcern;
 import com.mongodb.spark.api.java.RequiresMongoDB;
 import com.mongodb.spark.config.ReadConfig;
-import com.mongodb.spark.config.WriteConcernConfig;
 import com.mongodb.spark.config.WriteConfig;
 import org.junit.Test;
 
@@ -30,10 +29,11 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 
 public final class WriteConfigTest extends RequiresMongoDB {
+
     @Test
     public void shouldBeCreatableFromTheSparkConf() {
         WriteConfig readConfig = WriteConfig.create(getSparkConf());
-        WriteConfig expectedReadConfig = new WriteConfig(getDatabaseName(), getCollectionName(), WriteConcernConfig.create(getSparkConf()));
+        WriteConfig expectedReadConfig = WriteConfig.create(getDatabaseName(), getCollectionName(), getMongoClientURI(), WriteConcern.ACKNOWLEDGED);
 
         assertEquals(readConfig, expectedReadConfig);
     }
@@ -48,8 +48,8 @@ public final class WriteConfigTest extends RequiresMongoDB {
         options.put(WriteConfig.writeConcernWTimeoutMSProperty(), "100");
 
         WriteConfig writeConfig = WriteConfig.create(options);
-        WriteConfig expectedWriteConfig = new WriteConfig("db", "collection",
-                WriteConcernConfig.create(WriteConcern.W1.withJournal(true).withWTimeout(100, TimeUnit.MILLISECONDS)));
+        WriteConfig expectedWriteConfig = WriteConfig.create("db", "collection", null,
+                WriteConcern.W1.withJournal(true).withWTimeout(100, TimeUnit.MILLISECONDS));
 
         assertEquals(writeConfig, expectedWriteConfig);
     }
@@ -61,8 +61,7 @@ public final class WriteConfigTest extends RequiresMongoDB {
         options.put(ReadConfig.collectionNameProperty(), "collection");
 
         WriteConfig writeConfig = WriteConfig.create(options, WriteConfig.create(getSparkConf()));
-        WriteConfig expectedWriteConfig = new WriteConfig("db", "collection",
-                WriteConcernConfig.create(WriteConcern.ACKNOWLEDGED));
+        WriteConfig expectedWriteConfig = WriteConfig.create("db", "collection", getMongoClientURI(), WriteConcern.ACKNOWLEDGED);
 
         assertEquals(writeConfig, expectedWriteConfig);
     }
