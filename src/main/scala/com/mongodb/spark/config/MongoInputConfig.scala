@@ -40,6 +40,7 @@ package com.mongodb.spark.config
  *  - [[sampleSizeProperty sampleSize]], the sample size to use when inferring the schema.
  *  - [[splitKeyProperty splitKey]], the partition key to split the data.
  *  - [[maxChunkSizeProperty maxChunkSize]], the maximum chunk size when partitioning data from an unsharded collection.
+ *  - [[localThresholdProperty localThreshold]], the number of milliseconds used when choosing among multiple MongoDB servers to send a request.
  *
  */
 trait MongoInputConfig extends MongoCompanionConfig {
@@ -105,13 +106,13 @@ trait MongoInputConfig extends MongoCompanionConfig {
   /**
    * The localThreshold property
    *
-   * Used when choosing among multiple MongoDB servers to send a request.
+   * The local threshold in milliseconds is used when choosing among multiple MongoDB servers to send a request.
    * Only servers whose ping time is less than or equal to the server with the fastest ping time *plus* the local threshold will be chosen.
    *
    * For example when choosing which MongoS to send a request through a `localThreshold` of 0 would pick the MongoS with the fastest ping time.
    *
-   * Default: `15`
+   * Default: `15 ms`
    */
-  val localThresholdProperty = "localThreshold".toLowerCase
+  val localThresholdProperty = MongoSharedConfig.localThresholdProperty
 
 }

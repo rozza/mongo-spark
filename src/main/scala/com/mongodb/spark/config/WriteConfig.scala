@@ -39,29 +39,37 @@ object WriteConfig extends MongoOutputConfig {
    *
    * @param databaseName the database name
    * @param collectionName the collection name
+   * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
+   *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
+   *                       threshold will be chosen.
    * @param writeConcern the WriteConcern to use
    * @return the write config
    */
-  def apply(databaseName: String, collectionName: String, writeConcern: WriteConcern): WriteConfig =
-    new WriteConfig(databaseName, collectionName, None, WriteConcernConfig(writeConcern))
+  def apply(databaseName: String, collectionName: String, localThreshold: Int, writeConcern: WriteConcern): WriteConfig =
+    WriteConfig(databaseName, collectionName, localThreshold, None, WriteConcernConfig(writeConcern))
 
   /**
    * Creates a WriteConfig
    *
    * @param databaseName the database name
    * @param collectionName the collection name
+   * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
+   *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
+   *                       threshold will be chosen.
    * @param connectionString the optional connection string used in the creation of this configuration
    * @param writeConcern the WriteConcern to use
    * @return the write config
    */
-  def apply(databaseName: String, collectionName: String, connectionString: String, writeConcern: WriteConcern): WriteConfig =
-    new WriteConfig(databaseName, collectionName, Option(connectionString), WriteConcernConfig(writeConcern))
+  def apply(databaseName: String, collectionName: String, localThreshold: Int, connectionString: String, writeConcern: WriteConcern): WriteConfig =
+    WriteConfig(databaseName, collectionName, localThreshold, Option(connectionString), WriteConcernConfig(writeConcern))
 
   override def apply(options: collection.Map[String, String], default: Option[WriteConfig]): WriteConfig = {
     val cleanedOptions = prefixLessOptions(options)
     WriteConfig(
       databaseName = databaseName(databaseNameProperty, cleanedOptions, default.map(writeConf => writeConf.databaseName)),
       collectionName = collectionName(collectionNameProperty, cleanedOptions, default.map(writeConf => writeConf.collectionName)),
+      localThreshold = getInt(cleanedOptions.get(localThresholdProperty), default.map(conf => conf.localThreshold),
+        MongoSharedConfig.DefaultLocalThreshold),
       connectionString = cleanedOptions.get(mongoURIProperty).orElse(default.flatMap(conf => conf.connectionString)),
       writeConcernConfig = WriteConcernConfig(cleanedOptions, default.map(writeConf => writeConf.writeConcernConfig))
     )
@@ -72,15 +80,19 @@ object WriteConfig extends MongoOutputConfig {
    *
    * @param databaseName the database name
    * @param collectionName the collection name
+   * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
+   *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
+   *                       threshold will be chosen.
    * @param connectionString the optional connection string used in the creation of this configuration
    * @param writeConcern the WriteConcern to use
    * @return the write config
    */
-  def create(databaseName: String, collectionName: String, connectionString: String, writeConcern: WriteConcern): WriteConfig = {
+  def create(databaseName: String, collectionName: String, localThreshold: Int, connectionString: String, writeConcern: WriteConcern): WriteConfig = {
     notNull("databaseName", databaseName)
     notNull("collectionName", collectionName)
+    notNull("localThreshold", localThreshold)
     notNull("writeConcern", writeConcern)
-    apply(databaseName, collectionName, connectionString, writeConcern)
+    apply(databaseName, collectionName, localThreshold, connectionString, writeConcern)
   }
 
   override def create(javaSparkContext: JavaSparkContext): WriteConfig = {
@@ -111,6 +123,9 @@ object WriteConfig extends MongoOutputConfig {
  *
  * @param databaseName the database name
  * @param collectionName the collection name
+ * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
+ *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
+ *                       threshold will be chosen.
  * @param connectionString the optional connection string used in the creation of this configuration
  * @param writeConcernConfig the write concern configuration
  * @since 1.0
@@ -118,6 +133,7 @@ object WriteConfig extends MongoOutputConfig {
 case class WriteConfig(
     databaseName:                   String,
     collectionName:                 String,
+    localThreshold:                 Int                = MongoSharedConfig.DefaultLocalThreshold,
     connectionString:               Option[String]     = None,
     private val writeConcernConfig: WriteConcernConfig = WriteConcernConfig.Default
 ) extends MongoCollectionConfig with MongoClassConfig {
@@ -127,7 +143,7 @@ case class WriteConfig(
   override def withOptions(options: collection.Map[String, String]): WriteConfig = WriteConfig(options, Some(this))
 
   override def asOptions: collection.Map[String, String] = {
-    val options = Map("database" -> databaseName, "collection" -> collectionName) ++ writeConcernConfig.asOptions
+    val options = Map("database" -> databaseName, "collection" -> collectionName, "localThreshold" -> localThreshold.toString) ++ writeConcernConfig.asOptions
     connectionString match {
       case Some(uri) => options + (WriteConfig.mongoURIProperty -> uri)
       case None      => options

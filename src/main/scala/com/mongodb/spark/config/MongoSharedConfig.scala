@@ -19,6 +19,9 @@ package com.mongodb.spark.config
 private[spark] object MongoSharedConfig {
 
   val mongoURIProperty = "uri"
+  val localThresholdProperty = "localThreshold".toLowerCase
+
+  val DefaultLocalThreshold = 15 // 15 ms
 
 }
 

@@ -39,7 +39,6 @@ object ReadConfig extends MongoInputConfig {
   private val DefaultSampleSize: Int = 1000
   private val DefaultMaxChunkSize = 64 // 64 MB
   private val DefaultSplitKey = "_id"
-  private val DefaultLocalThreshold = 15 // 15MS
 
   override def apply(options: collection.Map[String, String], default: Option[ReadConfig]): ReadConfig = {
     val cleanedOptions = prefixLessOptions(options)
@@ -50,7 +49,8 @@ object ReadConfig extends MongoInputConfig {
       sampleSize = getInt(cleanedOptions.get(sampleSizeProperty), default.map(conf => conf.sampleSize), DefaultSampleSize),
       maxChunkSize = getInt(cleanedOptions.get(maxChunkSizeProperty), default.map(conf => conf.maxChunkSize), DefaultMaxChunkSize),
       splitKey = getString(cleanedOptions.get(splitKeyProperty), default.map(conf => conf.splitKey), DefaultSplitKey),
-      localThreshold = getInt(cleanedOptions.get(localThresholdProperty), default.map(conf => conf.localThreshold), DefaultLocalThreshold),
+      localThreshold = getInt(cleanedOptions.get(localThresholdProperty), default.map(conf => conf.localThreshold),
+        MongoSharedConfig.DefaultLocalThreshold),
       readPreferenceConfig = ReadPreferenceConfig(cleanedOptions, default.map(conf => conf.readPreferenceConfig)),
       readConcernConfig = ReadConcernConfig(cleanedOptions, default.map(conf => conf.readConcernConfig))
     )
@@ -66,9 +66,9 @@ object ReadConfig extends MongoInputConfig {
    * @param sampleSize a positive integer sample size to draw from the collection when inferring the schema
    * @param maxChunkSize   the maximum chunkSize for non-sharded collections
    * @param splitKey the key to split the collection by for non-sharded collections or the "shard key" for sharded collection
-   * @param localThreshold the local threshold is used when choosing among multiple MongoDB servers to send a request. Only servers
-   *                       whose ping time is less than or equal to the server with the fastest ping time plus the local threshold will be
-   *                       chosen.
+   * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
+   *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
+   *                       threshold will be chosen.
    * @param readPreference the readPreference configuration
    * @param readConcern the readConcern configuration
    *
@@ -119,9 +119,9 @@ object ReadConfig extends MongoInputConfig {
  * @param sampleSize a positive integer sample size to draw from the collection when inferring the schema
  * @param maxChunkSize   the maximum chunkSize for non-sharded collections
  * @param splitKey the key to split the collection by for non-sharded collections or the "shard key" for sharded collection
- * @param localThreshold the local threshold is used when choosing among multiple MongoDB servers to send a request. Only servers
- *                       whose ping time is less than or equal to the server with the fastest ping time plus the local threshold will be
- *                       chosen.
+ * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
+ *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
+ *                       threshold will be chosen.
  * @param readPreferenceConfig the readPreference configuration
  * @param readConcernConfig the readConcern configuration
  *
@@ -134,7 +134,7 @@ case class ReadConfig(
     sampleSize:           Int                  = ReadConfig.DefaultSampleSize,
     maxChunkSize:         Int                  = ReadConfig.DefaultMaxChunkSize,
     splitKey:             String               = ReadConfig.DefaultSplitKey,
-    localThreshold:       Int                  = ReadConfig.DefaultLocalThreshold,
+    localThreshold:       Int                  = MongoSharedConfig.DefaultLocalThreshold,
     readPreferenceConfig: ReadPreferenceConfig = ReadPreferenceConfig(),
     readConcernConfig:    ReadConcernConfig    = ReadConcernConfig()
 ) extends MongoCollectionConfig with MongoClassConfig {
