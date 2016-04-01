@@ -31,21 +31,17 @@ private[spark] object DefaultMongoClientFactory {
 }
 
 private[spark] case class DefaultMongoClientFactory(connectionString: String, localThreshold: Option[Int] = None) extends MongoClientFactory {
-  require(Try(mongoClientURI).isSuccess, s"Invalid '${MongoSharedConfig.mongoURIProperty}' '$connectionString'")
-
-  def mongoClientURI: MongoClientURI = new MongoClientURI(connectionString)
+  require(Try(new MongoClientURI(connectionString)).isSuccess, s"Invalid '${MongoSharedConfig.mongoURIProperty}' '$connectionString'")
 
   override def create(): MongoClient = {
-    val clientURI = mongoClientURI
+    val builder = new MongoClientOptions.Builder
+    val clientURI = new MongoClientURI(connectionString, builder)
     val hosts = clientURI.getHosts.asScala.map(new ServerAddress(_))
     val credentials = Option(clientURI.getCredentials) match {
       case Some(credential) => List(credential)
       case None             => List.empty[MongoCredential]
     }
-    val clientOptions = localThreshold match {
-      case Some(lt) => MongoClientOptions.builder(clientURI.getOptions).localThreshold(lt).build()
-      case None     => clientURI.getOptions
-    }
-    new MongoClient(hosts.asJava, credentials.asJava, clientOptions)
+    localThreshold.map(builder.localThreshold)
+    new MongoClient(hosts.asJava, credentials.asJava, clientURI.getOptions)
   }
 }
