@@ -16,14 +16,20 @@
 
 package com.mongodb.spark.sql
 
+import java.util.Date
+
+import scala.collection.JavaConverters._
+
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
 import org.apache.spark.sql.{SQLContext, SaveMode}
 
-import org.bson.Document
+import org.bson._
+import org.bson.types.ObjectId
 import com.mongodb.spark._
 import com.mongodb.spark.config.WriteConfig
+import com.mongodb.spark.sql.types.BsonCompatibility
 
 import org.scalatest.FlatSpec
 
@@ -162,8 +168,42 @@ class MongoDataFrameSpec extends FlatSpec with RequiresMongoDB {
     sqlContext.read.option("collection", saveToCollectionName).mongo[Character]().count() should equal(9)
   }
 
+  "DataFrames" should "round trip all bson types" in withSparkContext() { sc =>
+
+    val document = new BsonDocument()
+    document.put("null", new BsonNull())
+    document.put("int32", new BsonInt32(42))
+    document.put("int64", new BsonInt64(52L))
+    document.put("boolean", new BsonBoolean(true))
+    document.put("date", new BsonDateTime(new Date().getTime))
+    document.put("double", new BsonDouble(62.0))
+    document.put("string", new BsonString("the fox ..."))
+    document.put("minKey", new BsonMinKey())
+    document.put("maxKey", new BsonMaxKey())
+    document.put("objectId", new BsonObjectId(new ObjectId()))
+    document.put("code", new BsonJavaScript("int i = 0;"))
+    document.put("codeWithScope", new BsonJavaScriptWithScope("int x = y", new BsonDocument("y", new BsonInt32(1))))
+    document.put("regex", new BsonRegularExpression("^test.*regex.*xyz$", "i"))
+    document.put("symbol", new BsonSymbol("ruby stuff"))
+    document.put("timestamp", new BsonTimestamp(0x12345678, 5))
+    document.put("undefined", new BsonUndefined())
+    document.put("binary", new BsonBinary(Array[Byte](5, 4, 3, 2, 1)))
+    document.put("oldBinary", new BsonBinary(BsonBinarySubType.OLD_BINARY, Array[Byte](1, 1, 1, 1, 1)))
+    document.put("arrayInt", new BsonArray(List(new BsonInt32(1), new BsonInt32(2), new BsonInt32(3)).asJava))
+    document.put("document", new BsonDocument("a", new BsonInt32(1)))
+    document.put("dbPointer", new BsonDbPointer("db.coll", new ObjectId()))
+    database.getCollection(collectionName, classOf[BsonDocument]).insertOne(document)
+
+    val newCollectionName = s"${collectionName}_new"
+    new SQLContext(sc).read.mongo().write.option("collection", newCollectionName).mongo()
+
+    val original = database.getCollection(collectionName).find().iterator().asScala.toList
+    val copied = database.getCollection(newCollectionName).find().iterator().asScala.toList
+    copied should equal(original)
+  }
+
   private val expectedSchema: StructType = {
-    val _idField: StructField = createStructField("_id", DataTypes.StringType, true)
+    val _idField: StructField = createStructField("_id", BsonCompatibility.ObjectId.structType, true)
     val nameField: StructField = createStructField("name", DataTypes.StringType, true)
     val ageField: StructField = createStructField("age", DataTypes.IntegerType, true)
     createStructType(Array(_idField, ageField, nameField))
@@ -173,6 +213,5 @@ class MongoDataFrameSpec extends FlatSpec with RequiresMongoDB {
   private val documentFieldWithNulls: Seq[Document] = Seq("{_id: 1, a: {a: 1}}", "{_id: 2, a: {}}", "{_id: 3, a: null}").map(Document.parse)
   private val mixedLong: Seq[Document] = Seq(new Document("a", 1), new Document("a", 1), new Document("a", 1L))
   private val mixedDouble: Seq[Document] = Seq(new Document("a", 1), new Document("a", 1L), new Document("a", 1.0))
-
   // scalastyle:on magic.number
 }

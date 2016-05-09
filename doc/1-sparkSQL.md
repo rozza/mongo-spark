@@ -183,4 +183,56 @@ Outputs:
 
 -----
 
+## DataTypes
+
+Spark supports a limited number of data types, to ensure that all bson types can be round tripped in and out of Spark DataFrames / 
+DataSets custom StructTypes are created for any unsupported Bson Types. The following table shows the mapping between the Bson Types and 
+Spark Types:
+
+Bson Type               | Spark Type
+------------------------|---------------------------------------------------------------------
+`Document`              | `StructType`
+`Array`                 | `ArrayType`
+`32-bit integer`        | `Integer`
+`64-bit integer`        | `Double`
+`Binary data`           | `Array[Byte]` or `StructType`: `{ subType: Byte, data: Array[Byte]}`
+`Boolean`               | `Boolean`
+`Date`                  | `java.sql.Timestamp`
+`DBPointer`             | `StructType`: `{ ref: String , oid: String}`
+`Double`                | `Double`
+`JavaScript`            | `StructType`: `{ code: String }`
+`JavaScript with scope` | `StructType`: `{ code: String , scope: String }`
+`Max key`               | `StructType`: `{ maxKey: Integer }`
+`Min key`               | `StructType`: `{ minKey: Integer }`
+`Null`                  | `null`
+`ObjectId`              | `StructType`: `{ oid: String }`
+`Regular Expression`    | `StructType`: `{ regex: String , options: String }`
+`String`                | `String`
+`Symbol`                | `StructType`: `{ symbol: String }`
+`Timestamp`             | `StructType`: `{ time: Integer , inc: Integer }`
+`Undefined`             | `StructType`: `{ undefined: Boolean }`
+
+### Dataset support
+
+To help better support DataSets, the following Scala case classes and JavaBean classes have been created to represent the unsupported Bson 
+Types:
+
+Bson Type               | Scala case class                                   | JavaBean
+------------------------|----------------------------------------------------|-------------------------------------------------------------
+`Binary data`           | `com.mongodb.spark.sql.fields.Binary`              | `com.mongodb.spark.api.java.sql.fields.Binary`
+`DBPointer`             | `com.mongodb.spark.sql.fields.DBPointer`           | `com.mongodb.spark.api.java.sql.fields.DBPointer`
+`JavaScript`            | `com.mongodb.spark.sql.fields.JavaScript`          | `com.mongodb.spark.api.java.sql.fields.JavaScript`
+`JavaScript with scope` | `com.mongodb.spark.sql.fields.JavaScriptWithScope` | `com.mongodb.spark.api.java.sql.fields.JavaScriptWithScope`
+`Max key`               | `com.mongodb.spark.sql.fields.MaxKey`              | `com.mongodb.spark.api.java.sql.fields.MaxKey`
+`Min key`               | `com.mongodb.spark.sql.fields.MinKey`              | `com.mongodb.spark.api.java.sql.fields.MinKey`
+`ObjectId`              | `com.mongodb.spark.sql.fields.ObjectId`            | `com.mongodb.spark.api.java.sql.fields.ObjectId`
+`Regular Expression`    | `com.mongodb.spark.sql.fields.RegularExpression`   | `com.mongodb.spark.api.java.sql.fields.RegularExpression`
+`Symbol`                | `com.mongodb.spark.sql.fields.Symbol`              | `com.mongodb.spark.api.java.sql.fields.Symbol`
+`Timestamp`             | `com.mongodb.spark.sql.fields.Timestamp`           | `com.mongodb.spark.api.java.sql.fields.Timestamp`
+`Undefined`             | `com.mongodb.spark.sql.fields.Undefined`           | `com.mongodb.spark.api.java.sql.fields.Undefined`
+
+For convenience all Bson Types can be represented as a String value as well, however these values lose all their type information and if 
+saved back to MongoDB they would be stored as a String.
+
+
 [Next - Configuring](2-configuring.md)
