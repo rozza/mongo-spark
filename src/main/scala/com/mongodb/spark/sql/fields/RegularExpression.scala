@@ -37,7 +37,7 @@ object RegularExpression {
    * @param regex the regular expression
    * @return the new instance
    */
-  def apply(regex: Regex): RegularExpression = new RegularExpression(regex.regex, "")
+  def apply(regex: Regex): RegularExpression = this(regex.pattern)
 }
 
 /**
