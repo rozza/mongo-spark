@@ -16,14 +16,14 @@
 
 package com.mongodb.spark.sql.fields
 
-import org.bson.BsonSymbol
+import scala.util.Try
 
-/**
- * A case class representing the Bson Symbol type
- *
- * @param symbol the symbol
- * @since 1.0
- */
-case class Symbol(symbol: String) extends Field[BsonSymbol] {
-  lazy val underlying: BsonSymbol = new BsonSymbol(symbol)
+protected trait Field[T] {
+  require(Try(underlying).isSuccess)
+  def underlying: T
+  override def equals(that: Any): Boolean = that match {
+    case field: Field[_] => underlying.equals(field.underlying)
+    case _               => false
+  }
+  override def hashCode(): Int = underlying.hashCode()
 }

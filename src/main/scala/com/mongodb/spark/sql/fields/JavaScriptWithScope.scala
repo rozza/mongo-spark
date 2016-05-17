@@ -16,7 +16,7 @@
 
 package com.mongodb.spark.sql.fields
 
-import org.bson.BsonDocument
+import org.bson.{BsonDocument, BsonJavaScriptWithScope}
 
 /**
  * The JavaScriptWithScope companion object
@@ -37,6 +37,11 @@ object JavaScriptWithScope {
 /**
  * A case class representing the Bson JavaScriptWithScope type
  *
+ *
+ * @param code the javascript code
+ * @param scope a json document representing the javascript scope
  * @since 1.0
  */
-case class JavaScriptWithScope(code: String, scope: String)
+case class JavaScriptWithScope(code: String, scope: String) extends Field[BsonJavaScriptWithScope] {
+  lazy val underlying = new BsonJavaScriptWithScope(code, BsonDocument.parse(scope))
+}

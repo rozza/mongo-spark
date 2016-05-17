@@ -16,10 +16,14 @@
 
 package com.mongodb.spark.sql.fields
 
+import org.bson.BsonJavaScript
+
 /**
  * A case class representing the Bson JavaScript type
  *
  * @param code the javascript code
  * @since 1.0
  */
-case class JavaScript(code: String)
+case class JavaScript(code: String) extends Field[BsonJavaScript] {
+  lazy val underlying = new BsonJavaScript(code)
+}

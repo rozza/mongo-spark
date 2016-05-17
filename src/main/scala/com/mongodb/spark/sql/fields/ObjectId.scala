@@ -16,6 +16,8 @@
 
 package com.mongodb.spark.sql.fields
 
+import org.bson.BsonObjectId
+
 /**
  * The ObjectId companion object
  *
@@ -24,6 +26,7 @@ package com.mongodb.spark.sql.fields
 object ObjectId {
   /**
    * Create a new instance
+   *
    * @param oid the ObjectId
    * @return the new instance
    */
@@ -36,4 +39,6 @@ object ObjectId {
  * @param oid the ObjectId hex string representation
  * @since 1.0
  */
-case class ObjectId(oid: String)
+case class ObjectId(oid: String) extends Field[BsonObjectId] {
+  lazy val underlying: BsonObjectId = new BsonObjectId(new org.bson.types.ObjectId(oid))
+}

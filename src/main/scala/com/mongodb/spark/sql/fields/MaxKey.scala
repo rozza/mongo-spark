@@ -16,6 +16,8 @@
 
 package com.mongodb.spark.sql.fields
 
+import org.bson.BsonMaxKey
+
 /**
  * The MinKey companion object
  *
@@ -24,6 +26,7 @@ package com.mongodb.spark.sql.fields
 object MaxKey {
   /**
    * Create a new instance
+   *
    * @return the new instance
    */
   def apply(): MaxKey = new MaxKey(1)
@@ -35,4 +38,6 @@ object MaxKey {
  * @param maxKey data representing the maxKey
  * @since 1.0
  */
-case class MaxKey(maxKey: Int)
+case class MaxKey(maxKey: Int) extends Field[BsonMaxKey] {
+  lazy val underlying = new BsonMaxKey()
+}

@@ -16,7 +16,7 @@
 
 package com.mongodb.spark.sql.fields
 
-import org.bson.BsonBinarySubType
+import org.bson.{BsonBinary, BsonBinarySubType}
 
 /**
  * The Binary companion object
@@ -39,10 +39,6 @@ object Binary {
  * @param data the data
  * @since 1.0
  */
-case class Binary(subType: Byte, data: Array[Byte]) {
-  override def equals(that: Any): Boolean = that match {
-    case Binary(thatSubType, thatData) => thatSubType == this.subType && java.util.Arrays.equals(data, thatData)
-    case _                             => false
-  }
-  override def hashCode(): Int = 31 * subType.toInt + java.util.Arrays.hashCode(data)
+case class Binary(subType: Byte, data: Array[Byte]) extends Field[BsonBinary] {
+  lazy val underlying = new BsonBinary(subType, data)
 }

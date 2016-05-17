@@ -16,6 +16,8 @@
 
 package com.mongodb.spark.sql.fields
 
+import org.bson.BsonMinKey
+
 /**
  * The MinKey companion object
  *
@@ -24,6 +26,7 @@ package com.mongodb.spark.sql.fields
 object MinKey {
   /**
    * Create a new instance
+   *
    * @return the new instance
    */
   def apply(): MinKey = new MinKey(1)
@@ -35,4 +38,6 @@ object MinKey {
  * @param minKey data representing the minKey
  * @since 1.0
  */
-case class MinKey(minKey: Int)
+case class MinKey(minKey: Int) extends Field[BsonMinKey] {
+  lazy val underlying: BsonMinKey = new BsonMinKey()
+}

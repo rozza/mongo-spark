@@ -18,6 +18,8 @@ package com.mongodb.spark.sql.fields
 
 import java.util.Date
 
+import org.bson.BsonTimestamp
+
 /**
  * The Timestamp companion object
  *
@@ -47,4 +49,6 @@ object Timestamp {
  * @param inc an incrementing ordinal for operations within a given second
  * @since 1.0
  */
-case class Timestamp(time: Int, inc: Int)
+case class Timestamp(time: Int, inc: Int) extends Field[BsonTimestamp] {
+  lazy val underlying: BsonTimestamp = new BsonTimestamp(time, inc)
+}

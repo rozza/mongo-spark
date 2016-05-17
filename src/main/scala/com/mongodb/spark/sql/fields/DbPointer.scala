@@ -16,6 +16,8 @@
 
 package com.mongodb.spark.sql.fields
 
+import org.bson.BsonDbPointer
+
 /**
  * The DbPointer companion object
  *
@@ -39,4 +41,6 @@ object DbPointer {
  * @param oid the ObjectId hexString
  * @since 1.0
  */
-case class DbPointer(ref: String, oid: String)
+case class DbPointer(ref: String, oid: String) extends Field[BsonDbPointer] {
+  lazy val underlying = new BsonDbPointer(ref, new org.bson.types.ObjectId(oid))
+}

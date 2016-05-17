@@ -16,6 +16,8 @@
 
 package com.mongodb.spark.sql.fields
 
+import org.bson.BsonUndefined
+
 /**
  * The Undefined companion object
  *
@@ -24,6 +26,7 @@ package com.mongodb.spark.sql.fields
 object Undefined {
   /**
    * Create a new instance
+   *
    * @return the new instance
    */
   def apply(): Undefined = new Undefined(true)
@@ -35,4 +38,6 @@ object Undefined {
  * @param undefined data representing undefined
  * @since 1.0
  */
-case class Undefined(undefined: Boolean)
+case class Undefined(undefined: Boolean) extends Field[BsonUndefined] {
+  lazy val underlying: BsonUndefined = new BsonUndefined()
+}

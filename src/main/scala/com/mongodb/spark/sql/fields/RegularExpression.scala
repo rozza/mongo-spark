@@ -20,6 +20,8 @@ import java.util.regex.Pattern
 
 import scala.util.matching.Regex
 
+import org.bson.BsonRegularExpression
+
 /**
  * The RegularExpression companion object
  *
@@ -47,4 +49,6 @@ object RegularExpression {
  * @param options the options
  * @since 1.0
  */
-case class RegularExpression(regex: String, options: String)
+case class RegularExpression(regex: String, options: String) extends Field[BsonRegularExpression] {
+  lazy val underlying: BsonRegularExpression = new BsonRegularExpression(regex, options)
+}
