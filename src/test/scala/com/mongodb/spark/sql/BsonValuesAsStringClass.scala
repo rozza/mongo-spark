@@ -14,16 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.spark.sql.fields
+package com.mongodb.spark.sql
 
-import scala.util.Try
-
-protected trait Field[T] {
-  require(Try(underlying).isSuccess)
-  def underlying: T
-  override def equals(that: Any): Boolean = that match {
-    case field: Field[T] => underlying.equals(field.underlying)
-    case _               => false
-  }
-  override def hashCode(): Int = underlying.hashCode()
-}
+case class BsonValuesAsStringClass(nullValue: String, int32: String, int64: String, boolean: String, date: String, double: String,
+                                   string: String, minKey: String, maxKey: String, objectId: String, code: String, codeWithScope: String,
+                                   regex: String, symbol: String, timestamp: String, undefined: String, binary: String, oldBinary: String,
+                                   arrayInt: String, document: String, dbPointer: String)

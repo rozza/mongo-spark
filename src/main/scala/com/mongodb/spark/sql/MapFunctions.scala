@@ -26,6 +26,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types.{ArrayType, NullType, StringType, TimestampType, _}
 
 import org.bson._
+import com.mongodb.spark.exceptions.MongoTypeConversionException
 import com.mongodb.spark.sql.types.BsonCompatibility
 
 private[spark] object MapFunctions {
@@ -34,7 +35,7 @@ private[spark] object MapFunctions {
   def documentToRow(bsonDocument: BsonDocument, schema: StructType, requiredColumns: Array[String] = Array.empty[String]): Row = {
     val values: Array[(Any, StructField)] = schema.fields.map(field =>
       bsonDocument.containsKey(field.name) match {
-        case true  => (convertValue(bsonDocument.get(field.name), field.dataType), field)
+        case true  => (convertToDataType(bsonDocument.get(field.name), field.dataType), field)
         case false => (null, field)
       })
 
@@ -54,38 +55,37 @@ private[spark] object MapFunctions {
     val document = new BsonDocument()
     row.schema.fields.zipWithIndex.foreach({
       case (field, i) if row.isNullAt(i) => document.append(field.name, new BsonNull())
-      case (field, i)                    => document.append(field.name, elementTypeToBsonValue(field.dataType, row.get(i)))
+      case (field, i)                    => document.append(field.name, convertToBsonValue(row.get(i), field.dataType))
     })
     document
   }
 
-  private def convertValue(data: BsonValue, elementType: DataType): Any = {
-    Option(data) match {
-      case Some(element) => Try(castToDataType(element, elementType)) match {
-        case Success(value) => value
-        case Failure(ex)    => throw new RuntimeException(s"Could not convert $element to ${elementType.typeName}")
-      }
-      case None => data
+  private def convertToDataType(element: BsonValue, elementType: DataType): Any = {
+    (element.getBsonType, elementType) match {
+      case (BsonType.ARRAY, arrayType: ArrayType) => element.asArray().getValues.asScala.map(convertToDataType(_, arrayType.elementType))
+      case (BsonType.BINARY, BinaryType)          => element.asBinary().getData
+      case (BsonType.BOOLEAN, BooleanType)        => element.asBoolean().getValue
+      case (BsonType.DATE_TIME, DateType)         => new Date(element.asDateTime().getValue)
+      case (BsonType.DATE_TIME, TimestampType)    => new Timestamp(element.asDateTime().getValue)
+      case (BsonType.NULL, NullType)              => null
+      case (isBsonNumber(), DoubleType)           => element.asNumber().doubleValue()
+      case (isBsonNumber(), IntegerType)          => element.asNumber().intValue()
+      case (isBsonNumber(), LongType)             => element.asNumber().longValue()
+      case (notNull(), schema: StructType)        => castToStructType(element, schema)
+      case (_, StringType)                        => bsonValueToString(element)
+      case _ =>
+        element.isNull match {
+          case true  => null
+          case false => throw new MongoTypeConversionException(s"Cannot cast ${element.getBsonType} into a $elementType (value: $element)")
+        }
     }
   }
 
-  private def castToDataType(element: BsonValue, elementType: DataType): Any = {
-    element.getBsonType match {
-      case BsonType.NULL => null
-      case _ => elementType match {
-        case _: BinaryType        => element.asBinary().getData
-        case _: BooleanType       => element.asBoolean().getValue
-        case _: DateType          => new Date(element.asDateTime().getValue)
-        case _: DoubleType        => element.asNumber().doubleValue()
-        case _: IntegerType       => element.asNumber().intValue()
-        case _: LongType          => element.asNumber().longValue()
-        case _: NullType          => null
-        case _: StringType        => bsonValueToString(element)
-        case _: TimestampType     => new Timestamp(element.asDateTime().getValue)
-        case arrayType: ArrayType => element.asArray().getValues.asScala.map(castToDataType(_, arrayType.elementType))
-        case schema: StructType   => castToStructType(schema, element)
-        case _                    => throw new UnsupportedOperationException(s"$elementType is currently unsupported with value: $element")
-      }
+  private def convertToBsonValue(element: Any, elementType: DataType): BsonValue = {
+    Try(elementTypeToBsonValue(element, elementType)) match {
+      case Success(bsonValue)                        => bsonValue
+      case Failure(ex: MongoTypeConversionException) => throw ex
+      case Failure(e)                                => throw new MongoTypeConversionException(s"Cannot cast $element into a $elementType")
     }
   }
 
@@ -93,30 +93,69 @@ private[spark] object MapFunctions {
     element.getBsonType match {
       case BsonType.STRING    => element.asString().getValue
       case BsonType.OBJECT_ID => element.asObjectId().getValue.toHexString
-      case BsonType.ARRAY     => element.asArray().asScala.mkString("[", ",", "]")
-      case _                  => new BsonDocument("f", element).toJson.stripPrefix("""{ "f" :""").stripSuffix("}").trim()
+      case BsonType.INT64     => element.asInt64().getValue.toString
+      case BsonType.INT32     => element.asInt32().getValue.toString
+      case BsonType.DOUBLE    => element.asDouble().getValue.toString
+      case _                  => BsonValueToJson(element)
     }
   }
 
-  private def castToStructType(structType: StructType, element: BsonValue): Any = {
-    structType match {
-      case BsonCompatibility.ObjectId()            => BsonCompatibility.ObjectId(element.asObjectId(), structType)
-      case BsonCompatibility.MinKey()              => BsonCompatibility.MinKey(element.asInstanceOf[BsonMinKey], structType)
-      case BsonCompatibility.MaxKey()              => BsonCompatibility.MaxKey(element.asInstanceOf[BsonMaxKey], structType)
-      case BsonCompatibility.Timestamp()           => BsonCompatibility.Timestamp(element.asInstanceOf[BsonTimestamp], structType)
-      case BsonCompatibility.JavaScript()          => BsonCompatibility.JavaScript(element.asInstanceOf[BsonJavaScript], structType)
-      case BsonCompatibility.JavaScriptWithScope() => BsonCompatibility.JavaScriptWithScope(element.asInstanceOf[BsonJavaScriptWithScope], structType)
-      case BsonCompatibility.RegularExpression()   => BsonCompatibility.RegularExpression(element.asInstanceOf[BsonRegularExpression], structType)
-      case BsonCompatibility.Undefined()           => BsonCompatibility.Undefined(element.asInstanceOf[BsonUndefined], structType)
-      case BsonCompatibility.Binary()              => BsonCompatibility.Binary(element.asInstanceOf[BsonBinary], structType)
-      case BsonCompatibility.Symbol()              => BsonCompatibility.Symbol(element.asInstanceOf[BsonSymbol], structType)
-      case BsonCompatibility.DbPointer()           => BsonCompatibility.DbPointer(element.asInstanceOf[BsonDbPointer], structType)
-      case _                                       => documentToRow(element.asInstanceOf[BsonDocument], structType)
+  private def castToStructType(element: BsonValue, elementType: StructType): Any = {
+    (element.getBsonType, elementType) match {
+      case (BsonType.BINARY, BsonCompatibility.Binary()) =>
+        BsonCompatibility.Binary(element.asInstanceOf[BsonBinary], elementType)
+      case (BsonType.DOCUMENT, _) =>
+        documentToRow(element.asInstanceOf[BsonDocument], elementType)
+      case (BsonType.DB_POINTER, BsonCompatibility.DbPointer()) => BsonCompatibility.DbPointer(element.asInstanceOf[BsonDbPointer], elementType)
+      case (BsonType.JAVASCRIPT, BsonCompatibility.JavaScript()) =>
+        BsonCompatibility.JavaScript(element.asInstanceOf[BsonJavaScript], elementType)
+      case (BsonType.JAVASCRIPT_WITH_SCOPE, BsonCompatibility.JavaScriptWithScope()) =>
+        BsonCompatibility.JavaScriptWithScope(element.asInstanceOf[BsonJavaScriptWithScope], elementType)
+      case (BsonType.MIN_KEY, BsonCompatibility.MinKey()) =>
+        BsonCompatibility.MinKey(element.asInstanceOf[BsonMinKey], elementType)
+      case (BsonType.MAX_KEY, BsonCompatibility.MaxKey()) =>
+        BsonCompatibility.MaxKey(element.asInstanceOf[BsonMaxKey], elementType)
+      case (BsonType.OBJECT_ID, BsonCompatibility.ObjectId()) =>
+        BsonCompatibility.ObjectId(element.asInstanceOf[BsonObjectId], elementType)
+      case (BsonType.REGULAR_EXPRESSION, BsonCompatibility.RegularExpression()) =>
+        BsonCompatibility.RegularExpression(element.asInstanceOf[BsonRegularExpression], elementType)
+      case (BsonType.SYMBOL, BsonCompatibility.Symbol()) =>
+        BsonCompatibility.Symbol(element.asInstanceOf[BsonSymbol], elementType)
+      case (BsonType.TIMESTAMP, BsonCompatibility.Timestamp()) =>
+        BsonCompatibility.Timestamp(element.asInstanceOf[BsonTimestamp], elementType)
+      case (BsonType.UNDEFINED, BsonCompatibility.Undefined()) =>
+        BsonCompatibility.Undefined(element.asInstanceOf[BsonUndefined], elementType)
+      case _ => throw new MongoTypeConversionException(s"Cannot cast ${element.getBsonType} into a $elementType (value: $element)")
     }
   }
 
-  private def castFromStructType(structType: StructType, element: Row): BsonValue = {
-    structType match {
+  private def elementTypeToBsonValue(element: Any, elementType: DataType): BsonValue = {
+    elementType match {
+      case BinaryType           => new BsonBinary(element.asInstanceOf[Array[Byte]])
+      case BooleanType          => new BsonBoolean(element.asInstanceOf[Boolean])
+      case DateType             => new BsonDateTime(element.asInstanceOf[Date].getTime)
+      case DoubleType           => new BsonDouble(element.asInstanceOf[Double])
+      case IntegerType          => new BsonInt32(element.asInstanceOf[Int])
+      case LongType             => new BsonInt64(element.asInstanceOf[Long])
+      case StringType           => new BsonString(element.asInstanceOf[String])
+      case TimestampType        => new BsonDateTime(element.asInstanceOf[Timestamp].getTime)
+      case arrayType: ArrayType => arrayTypeToBsonValue(arrayType.elementType, element.asInstanceOf[Seq[_]])
+      case schema: StructType   => castFromStructType(element.asInstanceOf[Row], schema)
+      case _                    => throw new MongoTypeConversionException(s"Cannot cast $element into a $elementType")
+    }
+  }
+
+  private def arrayTypeToBsonValue(elementType: DataType, data: Seq[Any]): BsonValue = {
+    val internalData = elementType match {
+      case subDocuments: StructType => data.map(x => rowToDocument(x.asInstanceOf[Row])).asJava
+      case subArray: ArrayType      => data.map(x => arrayTypeToBsonValue(subArray.elementType, x.asInstanceOf[Seq[Any]])).asJava
+      case _                        => data.map(x => convertToBsonValue(x, elementType)).asJava
+    }
+    new BsonArray(internalData)
+  }
+
+  private def castFromStructType(element: Row, datatType: StructType): BsonValue = {
+    datatType match {
       case BsonCompatibility.ObjectId()            => BsonCompatibility.ObjectId(element)
       case BsonCompatibility.MinKey()              => BsonCompatibility.MinKey(element)
       case BsonCompatibility.MaxKey()              => BsonCompatibility.MaxKey(element)
@@ -132,30 +171,13 @@ private[spark] object MapFunctions {
     }
   }
 
-  private def elementTypeToBsonValue(elementType: DataType, element: Any): BsonValue = {
-    elementType match {
-      case _: BinaryType        => new BsonBinary(element.asInstanceOf[Array[Byte]])
-      case _: BooleanType       => new BsonBoolean(element.asInstanceOf[Boolean])
-      case _: DateType          => new BsonDateTime(element.asInstanceOf[Date].getTime)
-      case _: DoubleType        => new BsonDouble(element.asInstanceOf[Double])
-      case _: IntegerType       => new BsonInt32(element.asInstanceOf[Int])
-      case _: LongType          => new BsonInt64(element.asInstanceOf[Long])
-      case _: StringType        => new BsonString(element.asInstanceOf[String])
-      case _: TimestampType     => new BsonDateTime(element.asInstanceOf[Timestamp].getTime)
-      case arrayType: ArrayType => arrayTypeToBsonValue(arrayType.elementType, element.asInstanceOf[Seq[_]])
-      case schema: StructType   => castFromStructType(schema, element.asInstanceOf[Row])
-      case _ =>
-        throw new UnsupportedOperationException(s"$elementType is currently unsupported with value: $element")
-    }
+  private object isBsonNumber {
+    val bsonNumberTypes = Set(BsonType.INT32, BsonType.INT64, BsonType.DOUBLE)
+    def unapply(x: BsonType): Boolean = bsonNumberTypes.contains(x)
+  }
+  private object notNull {
+    def unapply(x: BsonType): Boolean = x != BsonType.NULL
   }
 
-  private def arrayTypeToBsonValue(elementType: DataType, data: Seq[Any]): BsonValue = {
-    val internalData = elementType match {
-      case subDocuments: StructType => data.map(x => rowToDocument(x.asInstanceOf[Row])).asJava
-      case subArray: ArrayType      => data.map(x => arrayTypeToBsonValue(subArray.elementType, x.asInstanceOf[Seq[Any]])).asJava
-      case _                        => data.map(x => elementTypeToBsonValue(elementType, x)).asJava
-    }
-    new BsonArray(internalData)
-  }
   // scalastyle:on cyclomatic.complexity null
 }

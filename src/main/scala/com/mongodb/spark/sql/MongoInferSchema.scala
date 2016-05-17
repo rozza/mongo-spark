@@ -134,14 +134,13 @@ object MongoInferSchema {
     HiveTypeCoercion.findTightestCommonTypeOfTwo(t1, t2).getOrElse {
       // t1 or t2 is a StructType, ArrayType, or an unexpected type.
       (t1, t2) match {
-        case (StructType(fields1), StructType(fields2)) => {
+        case (StructType(fields1), StructType(fields2)) =>
           val newFields = (fields1 ++ fields2).groupBy(field => field.name).map {
             case (name, fieldTypes) =>
               val dataType = fieldTypes.view.map(_.dataType).reduce(compatibleType)
               StructField(name, dataType, nullable = true)
           }
           StructType(newFields.toSeq.sortBy(_.name))
-        }
         case (ArrayType(elementType1, containsNull1), ArrayType(elementType2, containsNull2)) =>
           ArrayType(compatibleType(elementType1, elementType2), containsNull1 || containsNull2)
         // SkipFieldType Types

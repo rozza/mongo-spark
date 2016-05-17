@@ -68,7 +68,7 @@ private[spark] object BsonCompatibility {
       DataTypes.createStructField("oid", DataTypes.StringType, true)
     )
     override def toSparkData(bsonValue: BsonDbPointer): Array[Any] = Array(bsonValue.getNamespace, bsonValue.getId.toHexString)
-    override def fromSparkData(row: Row): BsonDbPointer = new BsonDbPointer(row.getString(0), new NativeObjectId(row.getString(1)))
+    override def fromSparkData(row: Row): BsonDbPointer = new BsonDbPointer(row.getString(0), new org.bson.types.ObjectId(row.getString(1)))
   }
 
   object JavaScript extends CompatibilityBase[BsonJavaScript] {
@@ -101,7 +101,7 @@ private[spark] object BsonCompatibility {
   object ObjectId extends CompatibilityBase[BsonObjectId] {
     override val fields: Seq[StructField] = Seq(DataTypes.createStructField("oid", DataTypes.StringType, true))
     override def toSparkData(bsonValue: BsonObjectId): Array[Any] = Array(bsonValue.getValue.toHexString)
-    override def fromSparkData(row: Row): BsonObjectId = new BsonObjectId(new NativeObjectId(row.getString(0)))
+    override def fromSparkData(row: Row): BsonObjectId = new BsonObjectId(new org.bson.types.ObjectId(row.getString(0)))
   }
 
   object RegularExpression extends CompatibilityBase[BsonRegularExpression] {

@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package com.mongodb.spark.sql.fields
+package com.mongodb.spark.exceptions
 
-import scala.util.Try
+import com.mongodb.MongoException
 
-protected trait Field[T] {
-  require(Try(underlying).isSuccess)
-  def underlying: T
-  override def equals(that: Any): Boolean = that match {
-    case field: Field[T] => underlying.equals(field.underlying)
-    case _               => false
+/**
+ * A class for exceptions that come when trying to convert Bson Types into Spark DataTypes or vice versa.
+ */
+class MongoTypeConversionException(message: String, throwable: Throwable) extends MongoException(message, throwable) {
+
+  def this(message: String) {
+    this(message, null) // scalastyle:ignore
   }
-  override def hashCode(): Int = underlying.hashCode()
+
 }

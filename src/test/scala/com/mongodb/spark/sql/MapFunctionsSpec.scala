@@ -20,10 +20,12 @@ import scala.reflect.runtime.universe._
 
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.ScalaReflection
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
 
 import org.bson.BsonDocument
 import com.mongodb.spark.RequiresMongoDB
+import com.mongodb.spark.exceptions.MongoTypeConversionException
 import com.mongodb.spark.sql.MapFunctions.{documentToRow, rowToDocument}
 
 class MapFunctionsSpec extends RequiresMongoDB {
@@ -138,6 +140,11 @@ class MapFunctionsSpec extends RequiresMongoDB {
 
     val convertedDouble = rowToDocument(documentToRow(BsonDocument.parse("{num: 1}"), schemaFor[MixedNumericsDouble]))
     convertedDouble should equal(BsonDocument.parse("{num: 1.0 }"))
+  }
+
+  it should "throw a MongoTypeConversionException when casting to an invalid DataType" in {
+    an[MongoTypeConversionException] should be thrownBy documentToRow(BsonDocument.parse("{num: [1]}"), schemaFor[MixedNumericsDouble])
+    an[MongoTypeConversionException] should be thrownBy rowToDocument(new GenericRowWithSchema(Array(Array(1)), schemaFor[MixedNumericsDouble]))
   }
   // scalastyle:on magic.number null
 }
