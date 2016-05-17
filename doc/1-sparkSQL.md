@@ -186,7 +186,7 @@ Outputs:
 ## DataTypes
 
 Spark supports a limited number of data types, to ensure that all bson types can be round tripped in and out of Spark DataFrames / 
-DataSets custom StructTypes are created for any unsupported Bson Types. The following table shows the mapping between the Bson Types and 
+DataSets. Custom StructTypes are created for any unsupported Bson Types. The following table shows the mapping between the Bson Types and 
 Spark Types:
 
 Bson Type               | Spark Type
@@ -194,7 +194,7 @@ Bson Type               | Spark Type
 `Document`              | `StructType`
 `Array`                 | `ArrayType`
 `32-bit integer`        | `Integer`
-`64-bit integer`        | `Double`
+`64-bit integer`        | `Long`
 `Binary data`           | `Array[Byte]` or `StructType`: `{ subType: Byte, data: Array[Byte]}`
 `Boolean`               | `Boolean`
 `Date`                  | `java.sql.Timestamp`

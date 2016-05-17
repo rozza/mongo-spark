@@ -48,7 +48,7 @@ class MapFunctionsSpec extends RequiresMongoDB {
     row.schema should equal(schema)
   }
 
-  it should "not prune the schema when using given a document with missing values" in {
+  it should "not prune the schema when given a document with missing values" in {
     val schema: StructType = schemaFor[Person]
     val document: BsonDocument = BsonDocument.parse("{name: 'John'}")
 

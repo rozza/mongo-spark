@@ -23,7 +23,6 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
 
 import org.bson._
-import org.bson.types.{ObjectId => NativeObjectId}
 
 private[spark] object BsonCompatibility {
 
