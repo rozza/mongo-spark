@@ -218,8 +218,8 @@ To help better support DataSets, the following Scala case classes and JavaBean c
 Types:
 
 Bson Type               | Scala case class                       | JavaBean
-                        | `com.mongodb.spark.sql.fieldTypes`     | `com.mongodb.spark.api.java.sql.fieldTypes.`
 ------------------------|----------------------------------------|----------------------------------------------
+                        | `com.mongodb.spark.sql.fieldTypes`     | `com.mongodb.spark.api.java.sql.fieldTypes.`
 `Binary data`           | `Binary`                               | `Binary`
 `DBPointer`             | `DBPointer`                            | `DBPointer`
 `JavaScript`            | `JavaScript`                           | `JavaScript`
