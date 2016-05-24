@@ -16,12 +16,12 @@
 
 package com.mongodb.spark.sql
 
-import com.mongodb.spark.Logging
+import com.mongodb.spark.LoggingTrait
 import org.apache.spark.sql.DataFrameWriter
 
 import com.mongodb.spark.config.WriteConfig
 
-class MongoDataFrameWriterFunctions(@transient val dfw: DataFrameWriter) extends Serializable with Logging {
+class MongoDataFrameWriterFunctions(@transient val dfw: DataFrameWriter) extends Serializable with LoggingTrait {
 
   private val source: String = "com.mongodb.spark.sql.DefaultSource"
 

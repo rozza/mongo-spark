@@ -56,7 +56,7 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
         StructType expectedSchema = createStructType(asList(_idField, ageField, nameField));
 
         // When
-        DataFrame df = MongoSpark.read(SQLContext.getOrCreate(jsc.sc())).load();
+        DataFrame df = MongoSpark.load(jsc).toDF();
 
         // Then
         assertEquals(df.schema(), expectedSchema);
@@ -72,7 +72,7 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
         StructType expectedSchema = createStructType(asList(_idField, ageField, nameField));
 
         // When
-        DataFrame df = MongoSpark.load(MongoSpark.read(SQLContext.getOrCreate(jsc.sc())));
+        DataFrame df = MongoSpark.load(jsc).toDF();
 
         // Then
         assertEquals(df.schema(), expectedSchema);
@@ -131,7 +131,7 @@ public final class MongoDataFrameReaderTest extends RequiresMongoDB {
         StructType expectedSchema = createStructType(asList(ageField, nameField));
 
         // When
-        DataFrame df = MongoSpark.load(MongoSpark.read(SQLContext.getOrCreate(jsc.sc())), Character.class);
+        DataFrame df = MongoSpark.load(jsc).toDF(Character.class);
 
         // Then
         assertEquals(df.schema(), expectedSchema);

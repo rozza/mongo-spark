@@ -85,10 +85,8 @@ trait MongoCompanionConfig extends Serializable {
    * @param options overloaded parameters
    * @return the configuration
    */
-  def apply(sparkConf: SparkConf, options: collection.Map[String, String]): Self = {
-    val defaults = sparkConf.getAll.filter(_._1.startsWith(configPrefix)).toMap
-    apply(prefixLessOptions(defaults) ++ prefixLessOptions(options))
-  }
+  def apply(sparkConf: SparkConf, options: collection.Map[String, String]): Self =
+    apply(getOptionsFromConf(sparkConf) ++ prefixLessOptions(options))
 
   /**
    * Create a configuration from the values in the `Map`
@@ -169,8 +167,22 @@ trait MongoCompanionConfig extends Serializable {
    */
   def create(options: util.Map[String, String], default: Self): Self
 
-  protected def prefixLessOptions(options: collection.Map[String, String]): collection.Map[String, String] =
+  /**
+   * Strip the prefix from options
+   *
+   * @param options options that may contain the prefix
+   * @return prefixLess options
+   */
+  def prefixLessOptions(options: collection.Map[String, String]): collection.Map[String, String] =
     options.map(kv => (kv._1.toLowerCase.stripPrefix(configPrefix), kv._2))
+
+  /**
+   * Gets an options map from the `SparkConf`
+   * @param sparkConf the SparkConf
+   * @return the options
+   */
+  def getOptionsFromConf(sparkConf: SparkConf): collection.Map[String, String] =
+    prefixLessOptions(sparkConf.getAll.filter(_._1.startsWith(configPrefix)).toMap)
 
   protected def getInt(newValue: Option[String], existingValue: Option[Int] = None, defaultValue: Int): Int = {
     newValue match {

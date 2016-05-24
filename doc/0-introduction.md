@@ -140,4 +140,9 @@ Any aggregation pipeline is valid, pre aggregating data in MongoDB may be more p
 
 -----
 
+## MongoSpark
+
+If you require granular control over your configuration, then the `MongoSpark` companion provides a `builder()` method for configuring 
+all aspects of the Mongo Spark Connector.  It also provides easy methods for going on to create an `RDD`, `DataFrame` or `Dataset`.
+
 [Next - Spark SQL](1-sparkSQL.md)
