@@ -78,7 +78,8 @@ class MongoInferSchemaSpec extends FlatSpec with MongoDataGenerator with Require
   it should "be able to infer the schema with custom sampleSize" in withSparkContext() { sc =>
     forAll(genDocumentDataType()) { (data: MongoDataType) =>
       sc.parallelize(data.getDocuments.toBson).saveToMongoDB()
-      data.schema should equal(MongoInferSchema(MongoRDD[BsonDocument](sc, readConfig.copy(sampleSize = 200)))) // scalastyle:ignore
+      val rdd = MongoSpark.builder().sparkContext(sc).readConfig(readConfig.copy(sampleSize = 200)).build().toRDD[BsonDocument]() //scalastyle:ignore
+      data.schema should equal(MongoInferSchema(rdd))
       database.drop()
     }
   }

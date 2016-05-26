@@ -132,12 +132,12 @@ public final class JavaIntroduction {
         df.show();
 
         // Via JavaMongoRDD
-        DataFrame rddDf = MongoSpark.load(sqlContext).toDF();
+        DataFrame rddDf = MongoSpark.load(jsc).toDF();
         rddDf.printSchema();
         df.show();
 
         // Declare the Schema via a Java Bean
-        DataFrame explicitDF = MongoSpark.load(sqlContext).toDF(Character.class);
+        DataFrame explicitDF = MongoSpark.load(jsc).toDF(Character.class);
         explicitDF.printSchema();
 
         // SQL
@@ -147,7 +147,7 @@ public final class JavaIntroduction {
         // Saving DataFrame
         MongoSpark.write(centenarians).option("collection", "hundredClub").save();
 
-        MongoSpark.load(MongoSpark.read(sqlContext).option("collection", "hundredClub"), Character.class).show();
+        MongoSpark.builder().sqlContext(sqlContext).option("collection", "hundredClub").build().toDF(Character.class).show();
     }
 
     private static JavaSparkContext createJavaSparkContext(final String[] args) {

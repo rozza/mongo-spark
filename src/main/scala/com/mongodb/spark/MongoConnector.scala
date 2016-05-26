@@ -24,6 +24,7 @@ import com.mongodb.client.{MongoCollection, MongoDatabase}
 import com.mongodb.spark.config.{MongoCollectionConfig, ReadConfig, WriteConfig}
 import com.mongodb.spark.connection.{DefaultMongoClientFactory, MongoClientCache}
 import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.api.java.function.Function
 import org.bson.codecs.configuration.CodecRegistry
 
 import scala.concurrent.duration.Duration
@@ -78,7 +79,7 @@ object MongoConnector {
  * @since 1.0
  */
 case class MongoConnector(mongoClientFactory: MongoClientFactory)
-    extends Serializable with Closeable with Logging {
+    extends Logging with Serializable with Closeable {
 
   /**
    * Execute some code on a `MongoClient`
@@ -130,6 +131,46 @@ case class MongoConnector(mongoClientFactory: MongoClientFactory)
         case _                        => collection
       })
     })
+
+  /**
+   * A Java friendly way to execute some code on a `MongoClient`
+   *
+   * *Note:* The MongoClient is reference counted and loaned to the `code` method and should only be used inside that function.
+   *
+   * @param code the code block that is passed
+   * @tparam T the result of the code function
+   * @return the result
+   */
+  def withMongoClientDo[T](code: Function[MongoClient, T]): T = withMongoClientDo[T]({ client => code.call(client) })
+
+  /**
+   * A Java friendly way to execute some code on a database
+   *
+   * *Note:* The `MongoDatabase` is reference counted and loaned to the `code` method and should only be used inside that function.
+   *
+   * @param config the [[com.mongodb.spark.config.MongoCollectionConfig]] determining which database to connect to
+   * @param code the code block that is executed
+   * @tparam T the result of the code function
+   * @return the result
+   */
+  def withDatabaseDo[T](config: MongoCollectionConfig, code: Function[MongoDatabase, T]): T =
+    withDatabaseDo[T](config, { mongoDatabase => code.call(mongoDatabase) })
+
+  /**
+   * A Java friendly way to execute some code on a collection
+   *
+   * *Note:* The `MongoCollection` is reference counted and loaned to the `code` method and should only be used inside that function.
+   *
+   * @param config the [[com.mongodb.spark.config.MongoCollectionConfig]] determining which database and collection to connect to
+   * @param clazz the class representing documents from the collection
+   * @param code the code block that is executed
+   * @tparam T the result of the code function
+   * @return the result
+   */
+  def withCollectionDo[D, T](config: MongoCollectionConfig, clazz: Class[D], code: Function[MongoCollection[D], T]): T = {
+    implicit def ct: ClassTag[D] = ClassTag(clazz)
+    withCollectionDo[D, T](config, { collection => code.call(collection) })
+  }
 
   private[spark] def acquireClient(): MongoClient = MongoConnector.mongoClientCache.acquire(mongoClientFactory)
   private[spark] def releaseClient(client: MongoClient): Unit = MongoConnector.mongoClientCache.release(client)

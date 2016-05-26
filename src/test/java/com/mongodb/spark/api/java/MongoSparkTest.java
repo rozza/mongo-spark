@@ -23,6 +23,7 @@ import com.mongodb.spark.config.WriteConfig;
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD;
 import org.apache.spark.SparkException;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.DataFrame;
@@ -36,15 +37,20 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.apache.spark.sql.types.DataTypes.createStructField;
 import static org.apache.spark.sql.types.DataTypes.createStructType;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public final class MongoSparkTest extends RequiresMongoDB {
 
@@ -80,7 +86,7 @@ public final class MongoSparkTest extends RequiresMongoDB {
         ReadConfig readConfig = ReadConfig.create(configOverrides, defaultReadConfig);
 
         MongoSpark.save(jsc.parallelize(counters), writeConfig);
-        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(jsc, readConfig);
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.builder().javaSparkContext(jsc).readConfig(readConfig).build().toJavaRDD();
 
         assertEquals(mongoRDD.count(), 3);
         List<Integer> counters = mongoRDD.map(new Function<Document, Integer>() {
@@ -217,4 +223,32 @@ public final class MongoSparkTest extends RequiresMongoDB {
         }, Encoders.INT()).collectAsList(), asList(null, null));
     }
 
+    @Test
+    public void useACustomPartitioner() {
+        // Given
+        JavaSparkContext jsc = getJavaSparkContext();
+        List<Document> documents = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            documents.add(Document.parse(format("{number: %s }", i)));
+        }
+        MongoSpark.save(jsc.parallelize(documents));
+
+        // when
+        JavaMongoRDD<Document> mongoRDD =
+                MongoSpark.builder().javaSparkContext(jsc).partitioner(new HalfwayPartitioner()).build().toJavaRDD();
+
+        // then - default values
+        assertEquals(mongoRDD.getNumPartitions(), 2);
+        assertThat(mongoRDD.mapPartitions(new FlatMapFunction<Iterator<Document>, Integer>() {
+            @Override
+            public Iterable<Integer> call(final Iterator<Document> iterator) throws Exception {
+                int i = 0;
+                while(iterator.hasNext()) {
+                    i++;
+                    iterator.next();
+                }
+                return singletonList(i);
+            }
+        }).collect(), is(asList(50, 50)));
+    }
 }

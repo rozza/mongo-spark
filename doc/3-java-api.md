@@ -107,7 +107,7 @@ System.out.println(aggregatedRdd.count());
 System.out.println(aggregatedRdd.first().toJson());
 ```
 
-## DataFrames and DataSets
+## DataFrames and Datasets
 
 Creating a dataframe is easy you can either load the data via `DefaultSource` or use the `JavaMongoRDD#toDF` method.
 
@@ -175,7 +175,7 @@ root
  |-- name: string (nullable = true)
 ```
 
-*Note:* Use the `toDS` method to convert a `JavaMongoRDD` into a `DataSet`.
+*Note:* Use the `toDS` method to convert a `JavaMongoRDD` into a `Dataset`.
 
 ### SQL
 
@@ -199,7 +199,7 @@ In the following example we save the centenarians into the "hundredClub" collect
 MongoSpark.write(centenarians).option("collection", "hundredClub").save();
 
 // Load the data from the "hundredClub" collection
-MongoSpark.load(MongoSpark.read(sqlContext).option("collection", "hundredClub"), Character.class).show();
+MongoSpark.builder().sqlContext(sqlContext).option("collection", "hundredClub").build().toDF(Character.class).show();
 ```
 
 Outputs:

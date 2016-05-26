@@ -18,20 +18,143 @@ package com.mongodb.spark.api.java
 
 import java.util
 
-import com.mongodb.spark.config.{ReadConfig, WriteConfig}
-import com.mongodb.spark.rdd.api.java.JavaMongoRDD
-import com.mongodb.spark.rdd.{DocumentRDDFunctions, MongoRDD}
-import com.mongodb.spark.sql._
-import com.mongodb.spark.{MongoConnector, notNull}
-import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
-import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter, SQLContext}
-import org.bson.Document
-import org.bson.conversions.Bson
-
 import scala.collection.JavaConverters._
+import scala.collection.Map
 import scala.reflect.ClassTag
 
+import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
+import org.apache.spark.sql._
+
+import org.bson.Document
+import org.bson.conversions.Bson
+import com.mongodb.spark.config.{ReadConfig, WriteConfig}
+import com.mongodb.spark.rdd.DocumentRDDFunctions
+import com.mongodb.spark.rdd.api.java.JavaMongoRDD
+import com.mongodb.spark.rdd.partitioner.MongoPartitioner
+import com.mongodb.spark.{MongoConnector, notNull}
+
+/**
+ * A Java specific helpers
+ *
+ * @see [[com.mongodb.spark.MongoSpark]] for other helpers for creating RDD's, DataFrames or Datasets
+ * @since 1.0
+ */
 object MongoSpark {
+
+  /**
+   * Create a builder for configuring the [[MongoSpark]]
+   *
+   * @return a MongoSession Builder
+   */
+  def builder(): Builder = new Builder
+
+  /**
+   * Builder for configuring and creating a [[MongoSpark]]
+   *
+   * It requires a `JavaSparkContext` or `SQLContext`
+   */
+  class Builder() {
+    val underlying = com.mongodb.spark.MongoSpark.builder()
+
+    def build(): MongoSpark = MongoSpark(underlying.build())
+
+    /**
+     * Sets the SQLContext from the javaSparkContext
+     *
+     * @param javaSparkContext for the RDD
+     */
+    def javaSparkContext(javaSparkContext: JavaSparkContext): Builder = {
+      underlying.javaSparkContext(javaSparkContext)
+      this
+    }
+
+    /**
+     * Sets the SQLContext
+     *
+     * @param sqlContext for the RDD
+     */
+    def sqlContext(sqlContext: SQLContext): Builder = {
+      underlying.sqlContext(sqlContext)
+      this
+    }
+
+    /**
+     * Append a configuration option
+     *
+     * These options can be used to configure all aspects of how to connect to MongoDB
+     *
+     * @param key   the configuration key
+     * @param value the configuration value
+     */
+    def option(key: String, value: String): Builder = {
+      underlying.option(key, value)
+      this
+    }
+
+    /**
+     * Set configuration options
+     *
+     * These options can configure all aspects of how to connect to MongoDB
+     *
+     * @param options the configuration options
+     */
+    def options(options: Map[String, String]): Builder = {
+      underlying.options(options)
+      this
+    }
+
+    /**
+     * Set configuration options
+     *
+     * These options can configure all aspects of how to connect to MongoDB
+     *
+     * @param options the configuration options
+     */
+    def options(options: util.Map[String, String]): Builder = {
+      underlying.options(options)
+      this
+    }
+
+    /**
+     * Sets the [[com.mongodb.spark.MongoConnector]] to use
+     *
+     * @param connector the MongoConnector
+     */
+    def connector(connector: MongoConnector): Builder = {
+      underlying.connector(connector)
+      this
+    }
+
+    /**
+     * Sets the [[com.mongodb.spark.rdd.partitioner.MongoPartitioner]] to use
+     *
+     * @param partitioner the partitioner
+     */
+    def partitioner(partitioner: MongoPartitioner): Builder = {
+      underlying.partitioner(partitioner)
+      this
+    }
+
+    /**
+     * Sets the [[com.mongodb.spark.config.ReadConfig]] to use
+     *
+     * @param readConfig the readConfig
+     */
+    def readConfig(readConfig: ReadConfig): Builder = {
+      underlying.readConfig(readConfig)
+      this
+    }
+
+    /**
+     * Sets the aggregation pipeline to use
+     *
+     * @param pipeline the aggregation pipeline
+     */
+    def pipeline(pipeline: util.List[Bson]): Builder = {
+      underlying.pipeline(pipeline.asScala)
+      this
+    }
+  }
 
   /**
    * Load data from MongoDB
@@ -39,228 +162,17 @@ object MongoSpark {
    * @param jsc the Spark context containing the MongoDB connection configuration
    * @return a MongoRDD
    */
-  def load(jsc: JavaSparkContext): JavaMongoRDD[Document] = load(SQLContext.getOrCreate(jsc.sc), classOf[Document])
+  def load(jsc: JavaSparkContext): JavaMongoRDD[Document] = builder().javaSparkContext(jsc).build().toJavaRDD()
 
   /**
    * Load data from MongoDB
    *
-   * @param jsc    the Spark context containing the MongoDB connection configuration
-   * @param clazz the class of the return type for the RDD
-   * @tparam D the type of Document to return
+   * @param jsc the Spark context containing the MongoDB connection configuration
+   * @param clazz   the class of the data contained in the RDD
+   * @tparam D the type of the data in the RDD
    * @return a MongoRDD
    */
-  def load[D](jsc: JavaSparkContext, clazz: Class[D]): JavaMongoRDD[D] = load(SQLContext.getOrCreate(jsc.sc), MongoConnectors.create(jsc.getConf), clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @return a MongoRDD
-   */
-  def load(jsc: JavaSparkContext, readConfig: ReadConfig): JavaMongoRDD[Document] =
-    load(jsc, MongoConnectors.create(ReadConfig.create(jsc.getConf.getAll.toMap.asJava, readConfig).asJavaOptions), readConfig)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param clazz        the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](jsc: JavaSparkContext, readConfig: ReadConfig, clazz: Class[D]): JavaMongoRDD[D] =
-    load(jsc, MongoConnectors.create(ReadConfig.create(jsc.getConf.getAll.toMap.asJava, readConfig).asJavaOptions), readConfig, clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @return a MongoRDD
-   */
-  def load(jsc: JavaSparkContext, connector: MongoConnector): JavaMongoRDD[Document] = load(SQLContext.getOrCreate(jsc.sc), connector, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param clazz the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](jsc: JavaSparkContext, connector: MongoConnector, clazz: Class[D]): JavaMongoRDD[D] =
-    load(SQLContext.getOrCreate(jsc.sc), connector, ReadConfig(jsc.getConf), clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @return a MongoRDD
-   */
-  def load(jsc: JavaSparkContext, connector: MongoConnector, readConfig: ReadConfig): JavaMongoRDD[Document] =
-    load(SQLContext.getOrCreate(jsc.sc), connector, readConfig, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param clazz        the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](jsc: JavaSparkContext, connector: MongoConnector, readConfig: ReadConfig, clazz: Class[D]): JavaMongoRDD[D] =
-    load(SQLContext.getOrCreate(jsc.sc), connector, readConfig, clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param pipeline aggregate pipeline
-   * @return a MongoRDD
-   */
-  def load(jsc: JavaSparkContext, connector: MongoConnector, readConfig: ReadConfig, pipeline: util.List[Bson]): JavaMongoRDD[Document] =
-    load(SQLContext.getOrCreate(jsc.sc), connector, readConfig, pipeline, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param jsc        the Java Spark context
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param pipeline aggregate pipeline
-   * @param clazz        the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](jsc: JavaSparkContext, connector: MongoConnector, readConfig: ReadConfig, pipeline: util.List[Bson], clazz: Class[D]): JavaMongoRDD[D] =
-    load(SQLContext.getOrCreate(jsc.sc), connector, readConfig, pipeline, clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext the Spark context containing the MongoDB connection configuration
-   * @return a MongoRDD
-   */
-  def load(sqlContext: SQLContext): JavaMongoRDD[Document] = load(sqlContext, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext    the Spark context containing the MongoDB connection configuration
-   * @param clazz the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](sqlContext: SQLContext, clazz: Class[D]): JavaMongoRDD[D] = load(sqlContext, MongoConnectors.create(sqlContext), clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext        the SQLContext
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @return a MongoRDD
-   */
-  def load(sqlContext: SQLContext, connector: MongoConnector): JavaMongoRDD[Document] = load(sqlContext, connector, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext        the SQLContext
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param clazz the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](sqlContext: SQLContext, connector: MongoConnector, clazz: Class[D]): JavaMongoRDD[D] =
-    load(sqlContext, connector, ReadConfig(sqlContext.sparkContext), clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext        the SQLContext
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @return a MongoRDD
-   */
-  def load(sqlContext: SQLContext, connector: MongoConnector, readConfig: ReadConfig): JavaMongoRDD[Document] =
-    load(sqlContext, connector, readConfig, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext        the SQLContext
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param clazz        the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](sqlContext: SQLContext, connector: MongoConnector, readConfig: ReadConfig, clazz: Class[D]): JavaMongoRDD[D] =
-    load(sqlContext, connector, readConfig, util.Collections.emptyList[Bson](), clazz)
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext        the SQLContext
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param pipeline aggregate pipeline
-   * @return a MongoRDD
-   */
-  def load(sqlContext: SQLContext, connector: MongoConnector, readConfig: ReadConfig, pipeline: util.List[Bson]): JavaMongoRDD[Document] =
-    load(sqlContext, connector, readConfig, pipeline, classOf[Document])
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param sqlContext        the SQLContext
-   * @param connector the[[com.mongodb.spark.MongoConnector]]
-   * @param readConfig the [[com.mongodb.spark.config.ReadConfig]]
-   * @param pipeline aggregate pipeline
-   * @param clazz        the class of the return type for the RDD
-   * @tparam D the type of Document to return
-   * @return a MongoRDD
-   */
-  def load[D](sqlContext: SQLContext, connector: MongoConnector, readConfig: ReadConfig, pipeline: util.List[Bson], clazz: Class[D]): JavaMongoRDD[D] = {
-    notNull("sqlContext", sqlContext)
-    notNull("connector", connector)
-    notNull("readConfig", readConfig)
-    notNull("clazz", clazz)
-    implicit def ct: ClassTag[D] = ClassTag(clazz)
-    MongoRDD(sqlContext, connector, readConfig, pipeline.asScala).toJavaRDD()
-  }
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param dataFrameReader the DataFrameReader to load
-   * @return a DataFrame
-   */
-  def load(dataFrameReader: DataFrameReader): DataFrame = load(dataFrameReader, null) // scalastyle:ignore
-
-  /**
-   * Load data from MongoDB
-   *
-   * @param dataFrameReader  the DataFrameReader to load
-   * @param clazz the java Bean class representing the Schema for the DataFrame
-   * @tparam D the type of Document to return
-   * @return a DataFrame
-   */
-  def load[D](dataFrameReader: DataFrameReader, clazz: Class[D]): DataFrame = {
-    Option(clazz) match {
-      case Some(c) => dataFrameReader.mongo(MongoInferSchema.reflectSchema(c))
-      case None    => dataFrameReader.mongo()
-    }
-  }
+  def load[D](jsc: JavaSparkContext, clazz: Class[D]): JavaMongoRDD[D] = builder().javaSparkContext(jsc).build().toJavaRDD(clazz)
 
   /**
    * Save data to MongoDB
@@ -328,7 +240,7 @@ object MongoSpark {
    * @param sqlContext the SQLContext
    * @return the DataFrameReader
    */
-  def read(sqlContext: SQLContext): DataFrameReader = sqlContext.read.format("com.mongodb.spark.sql")
+  def read(sqlContext: SQLContext): DataFrameReader = builder().sqlContext(sqlContext).build().underlying.read()
 
   /**
    * Creates a DataFrameWriter with the `MongoDB` underlying output data source.
@@ -340,4 +252,77 @@ object MongoSpark {
    */
   def write(dataFrame: DataFrame): DataFrameWriter = dataFrame.write.format("com.mongodb.spark.sql")
 
+}
+
+/**
+ * The MongoSpark class for use with the Java API
+ *
+ * *Note:* Creation of the class should be via [[MongoSpark#builder()]].
+ *
+ * @since 1.0
+ */
+case class MongoSpark(underlying: com.mongodb.spark.MongoSpark) {
+
+  /**
+   * Creates a `JavaRDD` for the collection
+   *
+   * @return a JavaMongoRDD[Document]
+   */
+  def toJavaRDD(): JavaMongoRDD[Document] = underlying.toJavaRDD()
+
+  /**
+   * Creates a `JavaRDD` for the collection
+   *
+   * @param clazz the class of the data contained in the RDD
+   * @tparam D the type of the data in the RDD
+   * @return the javaRDD
+   */
+  def toJavaRDD[D](clazz: Class[D]): JavaMongoRDD[D] = underlying.toJavaRDD(clazz)
+
+  /**
+   * Creates a `DataFrame` inferring the schema by sampling data from MongoDB.
+   *
+   * '''Note:''' Prefer [[toDS[T](beanClass:Class[T])*]] as any computations will be more efficient.
+   *  The rdd must contain an `_id` for MongoDB versions < 3.2.
+   *
+   * @return a DataFrame
+   */
+  def toDF(): DataFrame = underlying.toDF()
+
+  /**
+   * Creates a `DataFrame` based on the schema derived from the bean class.
+   *
+   * '''Note:''' Prefer [[toDS[D](beanClass:Class[D])*]] as computations will be more efficient.
+   *
+   * @param beanClass encapsulating the data from MongoDB
+   * @tparam D The bean class type to shape the data from MongoDB into
+   * @return a DataFrame
+   */
+  def toDF[D](beanClass: Class[D]): DataFrame = underlying.toDF(beanClass)
+
+  /**
+   * Creates a `Dataset` from the RDD strongly typed to the provided java bean.
+   *
+   * @tparam D The type of the data from MongoDB
+   * @return
+   */
+  def toDS[D](beanClass: Class[D]): Dataset[D] = underlying.toDS(beanClass)
+
+  override def productElement(n: Int): Any = underlying.productElement(n)
+
+  override def productArity: Int = underlying.productArity
+
+  override def productIterator: Iterator[Any] = underlying.productIterator
+
+  override def productPrefix: String = underlying.productPrefix
+
+  def copy(sqlContext: SQLContext, partitioner: MongoPartitioner, connector: MongoConnector, readConfig: ReadConfig,
+           pipeline: util.List[Bson]): MongoSpark =
+    new MongoSpark(underlying.copy(sqlContext, partitioner, connector, readConfig, pipeline.asScala))
+
+  override def canEqual(that: Any): Boolean = underlying.canEqual(that)
+
+  override def equals(that: Any): Boolean = underlying.equals(that)
+
+  override def hashCode(): Int = underlying.hashCode()
 }

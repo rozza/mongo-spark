@@ -22,10 +22,8 @@ import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
 import org.bson.Document
-import org.bson.conversions.Bson
 import com.mongodb.spark.DefaultHelper.DefaultsTo
-import com.mongodb.spark.MongoConnector
-import com.mongodb.spark.config.ReadConfig
+import com.mongodb.spark.MongoSpark
 import com.mongodb.spark.rdd.MongoRDD
 
 /**
@@ -40,16 +38,12 @@ case class SparkSQLContextFunctions(@transient sqlContext: SQLContext) extends S
   @transient private val sparkConf: SparkConf = sc.getConf
 
   /**
-   * Creates a MongoRDD
+   * Creates a MongoRDD using the current SQLContext
    *
-   * @param connector    the [[com.mongodb.spark.MongoConnector]]
-   * @param readConfig   the [[com.mongodb.spark.config.ReadConfig]]
-   * @param pipeline the aggregate pipeline
    * @tparam D the type of Document to return from MongoDB - defaults to Document
    * @return a MongoRDD
    */
-  def loadFromMongoDB[D: ClassTag](connector: MongoConnector = MongoConnector(sc), readConfig: ReadConfig = ReadConfig(sc),
-                                   pipeline: Seq[Bson] = Nil)(implicit e: D DefaultsTo Document): MongoRDD[D] =
-    MongoRDD[D](sqlContext, connector, readConfig, pipeline)
+  def loadFromMongoDB[D: ClassTag]()(implicit e: D DefaultsTo Document): MongoRDD[D] =
+    MongoSpark.builder().sqlContext(sqlContext).build().toRDD[D]()
 
 }

@@ -51,7 +51,7 @@ public final class NoSparkConfTest extends RequiresMongoDB {
         List<Document> documents = asList(Document.parse("{test: 0}"), Document.parse("{test: 1}"), Document.parse("{test: 2}"));
 
         MongoSpark.save(jsc.parallelize(documents), writeConfig);
-        JavaMongoRDD<Document> mongoRDD = MongoSpark.load(jsc, readConfig);
+        JavaMongoRDD<Document> mongoRDD = MongoSpark.builder().javaSparkContext(jsc).readConfig(readConfig).build().toJavaRDD();
 
         assertEquals(mongoRDD.count(), 3);
 

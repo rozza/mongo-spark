@@ -45,7 +45,7 @@ First enable the Mongo Connector specific functions on the `SQLContext`:
 import com.mongodb.spark.sql._
 ```
 
-### DataFrames and DataSets
+### DataFrames and Datasets
 
 Creating a DataFrame is easy using the implicit `mongo` helper on the `DataFrameReader`:
 
@@ -115,15 +115,15 @@ root
 
 ```
 
-The following example converts the `DataFrame` into a `DataSet`:
+The following example converts the `DataFrame` into a `Dataset`:
 
 ```scala
 explicitDF.as[Character]
 ```
 
-#### RDD to DataFrame / DataSets
+#### RDD to DataFrame / Datasets
 
-The `MongoRDD` class provides helpers to create DataFrames and DataSets directly:
+The `MongoRDD` class provides helpers to create DataFrames and Datasets directly:
 
 ```scala
 val dataframeInferred = sqlContext.loadFromMongoDB().toDF()
@@ -186,7 +186,7 @@ Outputs:
 ## DataTypes
 
 Spark supports a limited number of data types, to ensure that all bson types can be round tripped in and out of Spark DataFrames / 
-DataSets. Custom StructTypes are created for any unsupported Bson Types. The following table shows the mapping between the Bson Types and 
+Datasets. Custom StructTypes are created for any unsupported Bson Types. The following table shows the mapping between the Bson Types and 
 Spark Types:
 
 Bson Type               | Spark Type
@@ -214,7 +214,7 @@ Bson Type               | Spark Type
 
 ### Dataset support
 
-To help better support DataSets, the following Scala case classes and JavaBean classes have been created to represent the unsupported Bson 
+To help better support Datasets, the following Scala case classes and JavaBean classes have been created to represent the unsupported Bson 
 Types:
 
 Bson Type               | Scala case class                       | JavaBean

@@ -16,7 +16,6 @@
 
 package com.mongodb.spark
 
-import org.scalatest.FlatSpec
 import org.apache.spark.SparkException
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.types.DataTypes._
@@ -27,6 +26,8 @@ import org.bson.{BsonDocument, Document}
 import com.mongodb.client.model.{Aggregates, Filters}
 import com.mongodb.spark.rdd.MongoRDD
 import com.mongodb.spark.sql.types.BsonCompatibility
+
+import org.scalatest.FlatSpec
 
 class MongoRDDSpec extends FlatSpec with RequiresMongoDB {
   val counters =
@@ -113,6 +114,14 @@ class MongoRDDSpec extends FlatSpec with RequiresMongoDB {
     val dataset: Dataset[Counter] = sc.loadFromMongoDB().toDS[Counter]()
     import dataset.sqlContext.implicits._
     dataset.map(counter => counter.counter).collectAsList() should contain theSameElementsAs List(None, None)
+  }
+
+  it should "be easy to use a custom partitioner" in withSparkContext() { sc =>
+    sc.parallelize((1 to 100).map(i => Document.parse(s"{number: $i}"))).saveToMongoDB()
+
+    val mongoRDD: MongoRDD[Document] = MongoSpark.builder().sparkContext(sc).partitioner(HalfwayPartitioner).build().toRDD()
+    mongoRDD.getNumPartitions should equal(2)
+    mongoRDD.mapPartitions(iter => Array(iter.size).iterator).collect() should equal(Array(50, 50)) // scalastyle:ignore
   }
 
 }
