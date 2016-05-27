@@ -16,8 +16,6 @@
 
 package com.mongodb.spark.rdd
 
-import java.util
-
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
@@ -33,7 +31,6 @@ import org.bson.conversions.Bson
 import org.bson.{BsonDocument, Document}
 import com.mongodb.MongoClient
 import com.mongodb.client.MongoCursor
-import com.mongodb.connection.ServerVersion
 import com.mongodb.spark.config.ReadConfig
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD
 import com.mongodb.spark.rdd.partitioner.{MongoPartition, MongoPartitioner}
@@ -181,14 +178,7 @@ class MongoRDD[D: ClassTag](
     )
   }
 
-  private[spark] lazy val hasSampleAggregateOperator: Boolean = {
-    val buildInfo: BsonDocument = connector.value.withDatabaseDo(
-      readConfig.copy(databaseName = "test"),
-      { db => db.runCommand(new Document("buildInfo", 1), classOf[BsonDocument]) }
-    )
-    val versionArray: util.List[Integer] = buildInfo.getArray("versionArray").asScala.take(3).map(_.asInt32().getValue.asInstanceOf[Integer]).asJava
-    new ServerVersion(versionArray).compareTo(new ServerVersion(3, 2)) >= 0
-  }
+  private[spark] lazy val hasSampleAggregateOperator: Boolean = connector.value.hasSampleAggregateOperator(readConfig)
 
   private[spark] def appendPipeline[B <: Bson](extraPipeline: Seq[B]): MongoRDD[D] = withPipeline(pipeline ++ extraPipeline)
 }

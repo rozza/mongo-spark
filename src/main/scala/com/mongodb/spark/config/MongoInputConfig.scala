@@ -38,8 +38,9 @@ package com.mongodb.spark.config
  *  - [[readPreferenceTagSetsProperty readPreference.tagSets]], the `ReadPreference` TagSets to use.
  *  - [[readConcernLevelProperty readConcern.level]], the `ReadConcern` level to use.
  *  - [[sampleSizeProperty sampleSize]], the sample size to use when inferring the schema.
- *  - [[splitKeyProperty splitKey]], the partition key to split the data.
- *  - [[maxChunkSizeProperty maxChunkSize]], the maximum chunk size when partitioning data from an unsharded collection.
+ *  - [[partitionKeyProperty partitionKey]], the partition key to partition the data. For sharded collections this would be the shard key,
+ *    otherwise this should be left as the default `_id`.
+ *  - [[partitionSizeMBProperty partitionSizeMB]], he size (in MB) for each partition. Used when partitioning unsharded collections.
  *  - [[localThresholdProperty localThreshold]], the number of milliseconds used when choosing among multiple MongoDB servers to send a request.
  *
  */
@@ -88,20 +89,21 @@ trait MongoInputConfig extends MongoCompanionConfig {
   val sampleSizeProperty = "sampleSize".toLowerCase
 
   /**
-   * The split key property
+   * The partition key property
    *
-   * Represents the key to be used when partitioning the data in the collection.
+   * Represents the key to be used when partitioning the data in the collection. For sharded collections this would be the "shard key",
+   * otherwise this should be left as the default `_id`.
    * Default: `_id`
    */
-  val splitKeyProperty = "splitKey".toLowerCase
+  val partitionKeyProperty = "partitionKey".toLowerCase
 
   /**
-   * The max chunk size property
+   * The partition size property
    *
-   * Represents the max size (in MB) for each partition. Only used when partitioning non-sharded collections.
+   * Represents the size (in MB) for each partition. Used when partitioning unsharded collections.
    * Default: `64`
    */
-  val maxChunkSizeProperty = "maxChunkSize".toLowerCase
+  val partitionSizeMBProperty = "partitionSizeMB".toLowerCase
 
   /**
    * The localThreshold property

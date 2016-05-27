@@ -39,8 +39,8 @@ object ReadConfig extends MongoInputConfig {
   type Self = ReadConfig
 
   private val DefaultSampleSize: Int = 1000
-  private val DefaultMaxChunkSize = 64 // 64 MB
-  private val DefaultSplitKey = "_id"
+  private val DefaultPartitionSizeMB = 64 // 64 MB
+  private val DefaultPartitionKey = "_id"
 
   override def apply(options: collection.Map[String, String], default: Option[ReadConfig]): ReadConfig = {
     val cleanedOptions = stripPrefix(options)
@@ -52,8 +52,8 @@ object ReadConfig extends MongoInputConfig {
       collectionName = collectionName(collectionNameProperty, cleanedOptions, defaultCollection),
       connectionString = cleanedOptions.get(mongoURIProperty).orElse(default.flatMap(conf => conf.connectionString)),
       sampleSize = getInt(cleanedOptions.get(sampleSizeProperty), default.map(conf => conf.sampleSize), DefaultSampleSize),
-      maxChunkSize = getInt(cleanedOptions.get(maxChunkSizeProperty), default.map(conf => conf.maxChunkSize), DefaultMaxChunkSize),
-      splitKey = getString(cleanedOptions.get(splitKeyProperty), default.map(conf => conf.splitKey), DefaultSplitKey),
+      partitionSizeMB = getInt(cleanedOptions.get(partitionSizeMBProperty), default.map(conf => conf.partitionSizeMB), DefaultPartitionSizeMB),
+      partitionKey = getString(cleanedOptions.get(partitionKeyProperty), default.map(conf => conf.partitionKey), DefaultPartitionKey),
       localThreshold = getInt(cleanedOptions.get(localThresholdProperty), default.map(conf => conf.localThreshold),
         MongoSharedConfig.DefaultLocalThreshold),
       readPreferenceConfig = ReadPreferenceConfig(cleanedOptions, default.map(conf => conf.readPreferenceConfig)),
@@ -69,8 +69,8 @@ object ReadConfig extends MongoInputConfig {
    * @param collectionName the collection name
    * @param connectionString the optional connection string used in the creation of this configuration
    * @param sampleSize a positive integer sample size to draw from the collection when inferring the schema
-   * @param maxChunkSize   the maximum chunkSize for non-sharded collections
-   * @param splitKey the key to split the collection by for non-sharded collections or the "shard key" for sharded collection
+   * @param partitionSizeMB   the partition chunk size in MB for non-sharded collections
+   * @param partitionKey the key to split the collection by for non-sharded collections or the "shard key" for sharded collection
    * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
    *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
    *                       threshold will be chosen.
@@ -78,15 +78,15 @@ object ReadConfig extends MongoInputConfig {
    * @param readConcern the readConcern configuration
    * @since 1.0
    */
-  def create(databaseName: String, collectionName: String, connectionString: String, sampleSize: Int, maxChunkSize: Int, splitKey: String,
+  def create(databaseName: String, collectionName: String, connectionString: String, sampleSize: Int, partitionSizeMB: Int, partitionKey: String,
              localThreshold: Int, readPreference: ReadPreference, readConcern: ReadConcern): ReadConfig = {
     notNull("databaseName", databaseName)
     notNull("collectionName", collectionName)
-    notNull("splitKey", splitKey)
+    notNull("partitionKey", partitionKey)
     notNull("readPreference", readPreference)
     notNull("readConcern", readConcern)
 
-    new ReadConfig(databaseName, collectionName, Option(connectionString), sampleSize, maxChunkSize, splitKey, localThreshold,
+    new ReadConfig(databaseName, collectionName, Option(connectionString), sampleSize, partitionSizeMB, partitionKey, localThreshold,
       ReadPreferenceConfig.apply(readPreference), ReadConcernConfig.apply(readConcern))
   }
   // scalastyle:on parameter.number
@@ -131,14 +131,13 @@ object ReadConfig extends MongoInputConfig {
  * @param collectionName the collection name
  * @param connectionString the optional connection string used in the creation of this configuration
  * @param sampleSize a positive integer sample size to draw from the collection when inferring the schema
- * @param maxChunkSize   the maximum chunkSize for non-sharded collections
- * @param splitKey the key to split the collection by for non-sharded collections or the "shard key" for sharded collection
+ * @param partitionSizeMB   the partition size in MB for non-sharded collections
+ * @param partitionKey the "shard key" for sharded collection
  * @param localThreshold the local threshold in milliseconds used when choosing among multiple MongoDB servers to send a request.
  *                       Only servers whose ping time is less than or equal to the server with the fastest ping time plus the local
  *                       threshold will be chosen.
  * @param readPreferenceConfig the readPreference configuration
  * @param readConcernConfig the readConcern configuration
- *
  * @since 1.0
  */
 case class ReadConfig(
@@ -146,8 +145,8 @@ case class ReadConfig(
     collectionName:       String,
     connectionString:     Option[String]       = None,
     sampleSize:           Int                  = ReadConfig.DefaultSampleSize,
-    maxChunkSize:         Int                  = ReadConfig.DefaultMaxChunkSize,
-    splitKey:             String               = ReadConfig.DefaultSplitKey,
+    partitionSizeMB:      Int                  = ReadConfig.DefaultPartitionSizeMB,
+    partitionKey:         String               = ReadConfig.DefaultPartitionKey,
     localThreshold:       Int                  = MongoSharedConfig.DefaultLocalThreshold,
     readPreferenceConfig: ReadPreferenceConfig = ReadPreferenceConfig(),
     readConcernConfig:    ReadConcernConfig    = ReadConcernConfig()
@@ -167,8 +166,8 @@ case class ReadConfig(
       ReadConfig.databaseNameProperty -> databaseName,
       ReadConfig.collectionNameProperty -> collectionName,
       ReadConfig.sampleSizeProperty -> sampleSize.toString,
-      ReadConfig.maxChunkSizeProperty -> maxChunkSize.toString,
-      ReadConfig.splitKeyProperty -> splitKey,
+      ReadConfig.partitionSizeMBProperty -> partitionSizeMB.toString,
+      ReadConfig.partitionKeyProperty -> partitionKey,
       ReadConfig.localThresholdProperty -> localThreshold.toString
     ) ++ readPreferenceConfig.asOptions ++ readConcernConfig.asOptions
 

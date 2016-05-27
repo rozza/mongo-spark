@@ -1,6 +1,10 @@
 # Mongo Spark Connector Changelog
 
-## 0.3-SNAPSHOT
+## 0.4
+  * [[SPARK-54](https://jira.mongodb.org/browse/SPARK-54)] Added a sample and pagination based partitioners. SplitVector no longer a default partitioner.
+  * [[SPARK-53](https://jira.mongodb.org/browse/SPARK-53)] Partition failures now explicitly thrown.
+
+## 0.3
   * [[SPARK-58](https://jira.mongodb.org/browse/SPARK-58)] Added the ability to explicitly pass schema when creating a DataFrame.
   * [[SPARK-59](https://jira.mongodb.org/browse/SPARK-59)] Fixed being able to directly connect to a single MongoD in a replicaSet.
   * [[SPARK-56](https://jira.mongodb.org/browse/SPARK-56)] Moved MongoSpark into the Scala API as the main gateway for configuring the connector

@@ -55,7 +55,7 @@ case object MongoShardedPartitioner extends MongoPartitioner {
         )
         MongoSinglePartitioner.partitions(connector, readConfig)
       case false =>
-        generatePartitions(chunks, readConfig.splitKey, mapShards(connector))
+        generatePartitions(chunks, readConfig.partitionKey, mapShards(connector))
     }
   }
 
