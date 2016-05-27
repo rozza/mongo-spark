@@ -25,6 +25,8 @@ import org.apache.spark.api.java.JavaSparkContext
 import scala.collection.JavaConverters._
 import scala.util.Try
 
+import org.apache.spark.sql.SQLContext
+
 /**
  * The `ReadConfig` companion object
  *
@@ -94,6 +96,11 @@ object ReadConfig extends MongoInputConfig {
     apply(javaSparkContext.getConf)
   }
 
+  override def create(sqlContext: SQLContext): ReadConfig = {
+    notNull("sqlContext", sqlContext)
+    apply(sqlContext)
+  }
+
   override def create(sparkConf: SparkConf): ReadConfig = {
     notNull("sparkConf", sparkConf)
     apply(sparkConf)
@@ -151,6 +158,8 @@ case class ReadConfig(
 
   type Self = ReadConfig
 
+  override def withOption(key: String, value: String): ReadConfig = ReadConfig(this.asOptions + (key -> value))
+
   override def withOptions(options: collection.Map[String, String]): ReadConfig = ReadConfig(options, Some(this))
 
   override def asOptions: collection.Map[String, String] = {
@@ -169,7 +178,7 @@ case class ReadConfig(
     }
   }
 
-  override def withJavaOptions(options: util.Map[String, String]): ReadConfig = withOptions(options.asScala)
+  override def withOptions(options: util.Map[String, String]): ReadConfig = withOptions(options.asScala)
 
   override def asJavaOptions: util.Map[String, String] = asOptions.asJava
 
