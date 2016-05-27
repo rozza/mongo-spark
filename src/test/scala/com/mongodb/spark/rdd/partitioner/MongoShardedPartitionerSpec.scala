@@ -42,7 +42,7 @@ class MongoShardedPartitionerSpec extends RequiresMongoDB with PropertyChecks {
 
   it should "have a default bounds of min to max key" in {
     if (!isSharded) cancel("Not a Sharded MongoDB")
-    val expectedBounds: BsonDocument = new BsonDocument(readConfig.splitKey, new BsonDocument("$gte", new BsonMinKey).append("$lt", new BsonMaxKey))
+    val expectedBounds: BsonDocument = new BsonDocument(readConfig.partitionKey, new BsonDocument("$gte", new BsonMinKey).append("$lt", new BsonMaxKey))
     shardCollection()
     collection.insertOne(new Document())
 
