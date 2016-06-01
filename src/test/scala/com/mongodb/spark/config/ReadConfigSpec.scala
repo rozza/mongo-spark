@@ -88,8 +88,8 @@ class ReadConfigSpec extends FlatSpec with Matchers {
       "database" -> "dbName",
       "collection" -> "collName",
       "uri" -> "mongodb://localhost/",
-      "maxchunksize" -> "20",
-      "splitkey" -> "foo",
+      "partitionsizemb" -> "20",
+      "partitionkey" -> "foo",
       "localthreshold" -> "10",
       "readpreference.name" -> "secondaryPreferred",
       "readpreference.tagsets" -> """[{dc:"east",use:"production"},{}]""",
@@ -126,8 +126,8 @@ class ReadConfigSpec extends FlatSpec with Matchers {
   val sparkConf = new SparkConf()
     .set("spark.mongodb.input.database", "db")
     .set("spark.mongodb.input.collection", "collection")
-    .set("spark.mongodb.input.maxChunkSize", "32")
-    .set("spark.mongodb.input.splitKey", "ID")
+    .set("spark.mongodb.input.partitionSizeMB", "32")
+    .set("spark.mongodb.input.partitionKey", "ID")
     .set("spark.mongodb.input.localThreshold", "0")
     .set("spark.mongodb.input.readPreference.name", "secondary")
     .set("spark.mongodb.input.readConcern.level", "local")

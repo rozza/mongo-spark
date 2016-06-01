@@ -1,6 +1,8 @@
 # Mongo Spark Connector Changelog
 
 ## 0.3-SNAPSHOT
+  * [[SPARK-54](https://jira.mongodb.org/browse/SPARK-54)] Added a sample and pagination based partitioners. SplitVector no longer a default partitioner.
+  * [[SPARK-53](https://jira.mongodb.org/browse/SPARK-53)] Partition failures now explicitly thrown.
   * [[SPARK-56](https://jira.mongodb.org/browse/SPARK-56)] Moved MongoSpark into the Scala API as the main gateway for configuring the connector
     Removed the now redundant `com.mongodb.spark.api.java` namespace.
   * Added abstract class `Logging` so that implementations can be extended easily in Java.

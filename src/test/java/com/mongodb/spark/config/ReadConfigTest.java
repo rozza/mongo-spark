@@ -46,8 +46,8 @@ public final class ReadConfigTest extends JavaRequiresMongoDB {
         options.put(ReadConfig.databaseNameProperty(), "db");
         options.put(ReadConfig.collectionNameProperty(), "collection");
         options.put(ReadConfig.sampleSizeProperty(), "500");
-        options.put(ReadConfig.maxChunkSizeProperty(), "99");
-        options.put(ReadConfig.splitKeyProperty(), "ID");
+        options.put(ReadConfig.partitionSizeMBProperty(), "99");
+        options.put(ReadConfig.partitionKeyProperty(), "ID");
         options.put(ReadConfig.localThresholdProperty(), "0");
         options.put(ReadConfig.readPreferenceNameProperty(), "secondaryPreferred");
         options.put(ReadConfig.readPreferenceTagSetsProperty(), "[{dc: \"east\", use: \"production\"},{}]");

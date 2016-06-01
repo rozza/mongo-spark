@@ -28,8 +28,8 @@ spark.mongodb.input.readPreference.name    | The name of the `ReadPreference` to
 spark.mongodb.input.readPreference.tagSets | The `ReadPreference` TagSets to use                               |
 spark.mongodb.input.readConcern.level      | The `ReadConcern` level to use                                    |
 spark.mongodb.input.sampleSize             | The sample size to use when inferring the schema                  | 1000
-spark.mongodb.input.splitKey               | The partition key to split the data                               | `_id`
-spark.mongodb.input.maxChunkSize           | The maximum chunk size for partitioning an unsharded collection   | 64 MB
+spark.mongodb.input.partitionKey           | The partition key to partition the data for sharded collections   | `_id`
+spark.mongodb.input.partitionSizeMB        | The partition size for partitioning unsharded collections         | 64 MB
 
 -----
 **Note**: When passing input configurations via an options Map then the prefix `spark.mongodb.input.` is not needed.

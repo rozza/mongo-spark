@@ -16,28 +16,31 @@
 
 package com.mongodb.spark.rdd.partitioner
 
-import org.scalatest.FlatSpec
 import org.bson.{BsonDocument, BsonMaxKey, BsonMinKey, Document}
-import com.mongodb.spark.{JavaRequiresMongoDB, RequiresMongoDB}
+import com.mongodb.spark.RequiresMongoDB
 
-class MongoSplitVectorPartitionerSpec extends RequiresMongoDB {
+class MongoSamplePartitionerSpec extends RequiresMongoDB {
 
   // scalastyle:off magic.number
-  "MongoSplitVectorPartitioner" should "partition the database as expected" in {
-    if (isSharded) cancel("Sharded MongoDB")
-    loadSampleData(5)
+  "MongoSamplePartitioner" should "partition the database as expected" in {
+    loadSampleData(10)
 
-    val partitions = MongoSplitVectorPartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 3))
-    partitions.length should be >= 2
+    val partitions = MongoSamplePartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 1))
+    partitions.length should equal(11)
     partitions.head.locations should not be empty
-    MongoSplitVectorPartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 7)).length shouldBe 1
+
+    MongoSamplePartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 10)).length shouldBe 1
   }
   // scalastyle:on magic.number
 
   it should "have a default bounds of min to max key" in {
     val expectedBounds: BsonDocument = PartitionerHelper.createBoundaryQuery(readConfig.partitionKey, new BsonMinKey, new BsonMaxKey)
     collection.insertOne(new Document())
+    MongoSamplePartitioner.partitions(mongoConnector, readConfig)(0).queryBounds should equal(expectedBounds)
+  }
 
-    MongoSplitVectorPartitioner.partitions(mongoConnector, readConfig)(0).queryBounds should equal(expectedBounds)
+  it should "handle no collection" in {
+    val expectedPartitions = MongoSinglePartitioner.partitions(mongoConnector, readConfig)
+    MongoSamplePartitioner.partitions(mongoConnector, readConfig) should equal(expectedPartitions)
   }
 }

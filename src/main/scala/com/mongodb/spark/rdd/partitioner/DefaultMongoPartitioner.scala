@@ -18,7 +18,7 @@ package com.mongodb.spark.rdd.partitioner
 
 import scala.util.{Failure, Success, Try}
 
-import org.bson.Document
+import org.bson.BsonBoolean
 import com.mongodb.MongoCommandException
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.config.ReadConfig
@@ -35,18 +35,18 @@ import com.mongodb.spark.config.ReadConfig
 case object DefaultMongoPartitioner extends MongoPartitioner {
 
   override def partitions(connector: MongoConnector, readConfig: ReadConfig): Array[MongoPartition] = {
-    val collStatsCommand: Document = new Document("collStats", readConfig.collectionName)
-    val partitioner = Try(connector.withDatabaseDo(readConfig, { db => db.runCommand(collStatsCommand) })) match {
-      case Success(result) => result.getBoolean("sharded").asInstanceOf[Boolean] match {
-        case true  => MongoShardedPartitioner
-        case false => MongoSplitVectorPartitioner
+    val partitioner = Try(PartitionerHelper.collStats(connector, readConfig)) match {
+      case Success(stats) => stats.getBoolean("sharded", new BsonBoolean(false)).getValue match {
+        case true => MongoShardedPartitioner
+        case false if connector.hasSampleAggregateOperator(readConfig) => MongoSamplePartitioner
+        case false => MongoPaginationPartitioner
       }
       case Failure(ex: MongoCommandException) if ex.getErrorMessage.endsWith("not found.") =>
-        logWarning(s"Could not find collection (${readConfig.collectionName}), using single partition")
+        logInfo(s"Could not find collection (${readConfig.collectionName}), using single partition")
         MongoSinglePartitioner
       case Failure(e) =>
-        logWarning(s"Could not get collection statistics, using single partition. Server errmsg: ${e.getMessage}")
-        MongoSinglePartitioner
+        logWarning(s"Could not get collection statistics. Server errmsg: ${e.getMessage}")
+        throw e
     }
     partitioner.partitions(connector, readConfig)
   }
