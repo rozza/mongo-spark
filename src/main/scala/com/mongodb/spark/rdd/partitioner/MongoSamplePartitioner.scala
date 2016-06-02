@@ -49,9 +49,11 @@ case object MongoSamplePartitioner extends MongoPartitioner {
    * @return the partitions
    */
   override def partitions(connector: MongoConnector, readConfig: ReadConfig): Array[MongoPartition] = {
+    require(readConfig.partitionKey == "_id", "The MongoSamplePartitioner can only partition on `_id`")
+
     Try(PartitionerHelper.collStats(connector, readConfig)) match {
       case Success(results) =>
-        val partitionKey = "_id"
+        val partitionKey = readConfig.partitionKey
         val partitionSizeInBytes = readConfig.partitionSizeMB * 1024 * 1024
         val count = results.getNumber("count").longValue()
         val avgObjSizeInBytes = results.getNumber("avgObjSize").longValue()
@@ -67,9 +69,9 @@ case object MongoSamplePartitioner extends MongoPartitioner {
                   Aggregates.sample(numberOfSamples),
                   Aggregates.project(Projections.include(partitionKey)),
                   Aggregates.sort(Sorts.ascending(partitionKey))
-                ).asJava).into(new util.ArrayList[BsonValue]()).asScala
+                ).asJava).into(new util.ArrayList[BsonDocument]()).asScala
             })
-            samples.zipWithIndex.collect { case (_id, i) if i % samplesPerPartition == 0 => _id }
+            samples.zipWithIndex.collect { case (field, i) if i % samplesPerPartition == 0 => field.get("_id") }
         }
 
         PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries, PartitionerHelper.locations(connector))

@@ -16,8 +16,8 @@
 
 package com.mongodb.spark.rdd.partitioner
 
-import org.bson.{BsonDocument, BsonMaxKey, BsonMinKey, Document}
-import com.mongodb.spark.RequiresMongoDB
+import org.bson._
+import com.mongodb.spark.{MongoConnector, RequiresMongoDB}
 
 class MongoPaginationPartitionerSpec extends RequiresMongoDB {
 
@@ -25,11 +25,15 @@ class MongoPaginationPartitionerSpec extends RequiresMongoDB {
   "MongoPaginationPartitioner" should "partition the database as expected" in {
     loadSampleData(10)
 
+    val rightHandBoundaries = (1 to 100 by 10).map(x => new BsonString(f"$x%05d"))
+    val locations = PartitionerHelper.locations(MongoConnector(sparkConf))
+    val expectedPartitions = PartitionerHelper.createPartitions(readConfig.partitionKey, rightHandBoundaries, locations)
     val partitions = MongoPaginationPartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 1))
-    partitions.length should equal(11)
-    partitions.head.locations should not be empty
 
-    MongoPaginationPartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 10)).length shouldBe 1
+    partitions should equal(expectedPartitions)
+
+    val singlePartition = PartitionerHelper.createPartitions(readConfig.partitionKey, Seq.empty[BsonValue], locations)
+    MongoPaginationPartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 10)) should equal(singlePartition)
   }
   // scalastyle:on magic.number
 

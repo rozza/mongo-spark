@@ -24,7 +24,6 @@ import scala.util.Try
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset, SQLContext}
 
 import org.bson.conversions.Bson

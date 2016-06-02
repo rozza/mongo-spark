@@ -23,7 +23,7 @@ import scala.util._
 
 import org.apache.spark.SparkConf
 
-import org.bson.Document
+import org.bson.{BsonDocument, BsonString, Document}
 import com.mongodb.client.model.Updates
 import com.mongodb.client.{MongoCollection, MongoDatabase}
 import com.mongodb.{MongoClient, MongoClientURI, ReadPreference}
@@ -100,15 +100,20 @@ class MongoDBDefaults extends Logging {
     assert(isMongoDBOnline(), "MongoDB offline")
     assert(sizeInMB > 0, "Size in MB must be more than ")
     logInfo(s"Loading sample Data: ~${sizeInMB}MB data into '$collectionName'")
-    val collection: MongoCollection[Document] = mongoClient.getDatabase(DATABASE_NAME)
+    val collection: MongoCollection[BsonDocument] = mongoClient.getDatabase(DATABASE_NAME)
       .withReadPreference(ReadPreference.primary())
-      .getCollection(collectionName)
-    val random: Random = new Random()
+      .getCollection(collectionName, classOf[BsonDocument])
     val numberOfDocuments: Int = 10
-    val fieldLength: Int = (1024 * 1024 / numberOfDocuments) - 30 // One MB / number of Documents - Some padding
+
+    val paddingSize = ("_ids1234567890").getBytes.length
+    val fieldLength: Int = (1024 * 1024 / numberOfDocuments) - paddingSize // One MB / number of Documents - Some padding
+    var counter = 0
     (1 to sizeInMB).foreach({ x =>
       val sampleString: String = Random.alphanumeric.take(fieldLength).mkString
-      val documents: IndexedSeq[Document] = (1 to numberOfDocuments).map(y => new Document("s", sampleString))
+      val documents: IndexedSeq[BsonDocument] = (1 to numberOfDocuments).map(y => {
+        counter += 1
+        new BsonDocument("_id", new BsonString(f"$counter%05d")).append("s", new BsonString(sampleString))
+      })
       collection.insertMany(documents.toList.asJava)
     })
   }

@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 import org.bson.{BsonDocument, BsonValue}
 import com.mongodb.MongoCommandException
 import com.mongodb.client.MongoCollection
-import com.mongodb.client.model.Projections
+import com.mongodb.client.model.{Projections, Sorts}
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.config.ReadConfig
 
@@ -29,7 +29,7 @@ import com.mongodb.spark.config.ReadConfig
  *
  * Uses the `collStats` command and the average document size to estimate the partition boundaries.
  *
- * *Note:* This can be a expensive opertation as it creates 1 cursor for every estimated `partitionSizeMB`s worth of documents.
+ * *Note:* This can be a expensive operation as it creates 1 cursor for every estimated `partitionSizeMB`s worth of documents.
  *
  * @since 1.0
  */
@@ -47,7 +47,7 @@ case object MongoPaginationPartitioner extends MongoPartitioner {
 
     Try(PartitionerHelper.collStats(connector, readConfig)) match {
       case Success(results) =>
-        val partitionKey = "_id"
+        val partitionKey = readConfig.partitionKey
         val partitionSizeInBytes = readConfig.partitionSizeMB * 1024 * 1024
         val count = results.getNumber("count").longValue()
         val avgObjSizeInBytes = results.getNumber("avgObjSize").longValue()
@@ -59,13 +59,21 @@ case object MongoPaginationPartitioner extends MongoPartitioner {
           case true => Seq.empty[BsonValue]
           case false =>
             val skipValues = (0 to numberOfPartitions.toInt).map(i => i * estNumDocumentsPerPartition)
-            skipValues.map(i => connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
+            val ids = skipValues.map(i => connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
               i >= count match {
                 case true => None
                 case false =>
-                  Option(coll.find().skip(i).limit(-1).projection(Projections.include(partitionKey)).first()).map(_.get(partitionKey))
+                  Option(coll.find()
+                    .skip(i)
+                    .limit(-1)
+                    .projection(Projections.include(partitionKey))
+                    .sort(Sorts.ascending(partitionKey))
+                    .first())
+                    .map(_.get(partitionKey))
               }
             })).collect({ case Some(boundary) => boundary })
+
+
         }
         PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries, PartitionerHelper.locations(connector))
       case Failure(ex: MongoCommandException) if ex.getErrorMessage.endsWith("not found.") =>

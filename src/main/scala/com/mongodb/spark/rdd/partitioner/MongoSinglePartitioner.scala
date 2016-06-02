@@ -16,7 +16,7 @@
 
 package com.mongodb.spark.rdd.partitioner
 
-import org.bson.BsonDocument
+import org.bson.BsonValue
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.config.ReadConfig
 
@@ -37,7 +37,7 @@ case object MongoSinglePartitioner extends MongoPartitioner {
     _partitions.isDefined match {
       case true => _partitions.get
       case false =>
-        _partitions = Some(PartitionerHelper.createPartitions(readConfig.partitionKey, Seq.empty[BsonDocument], PartitionerHelper.locations(connector)))
+        _partitions = Some(PartitionerHelper.createPartitions(readConfig.partitionKey, Seq.empty[BsonValue], PartitionerHelper.locations(connector)))
         _partitions.get
     }
   }
