@@ -15,6 +15,7 @@
  */
 
 package com.mongodb.spark.rdd.partitioner
+
 import scala.util.{Failure, Success, Try}
 
 import org.bson.{BsonDocument, BsonValue}
@@ -55,11 +56,11 @@ case object MongoPaginationPartitioner extends MongoPartitioner {
         val numberOfPartitions = math.ceil(size / partitionSizeInBytes.toFloat).toInt
         val estNumDocumentsPerPartition: Int = math.ceil(partitionSizeInBytes.toFloat / avgObjSizeInBytes).toInt
 
-        val rightHandBoundaries = estNumDocumentsPerPartition >= count match {
+        val unSortedRightHandBoundaries = estNumDocumentsPerPartition >= count match {
           case true => Seq.empty[BsonValue]
           case false =>
             val skipValues = (0 to numberOfPartitions.toInt).map(i => i * estNumDocumentsPerPartition)
-            val ids = skipValues.map(i => connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
+            skipValues.map(i => connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
               i >= count match {
                 case true => None
                 case false =>
@@ -72,9 +73,10 @@ case object MongoPaginationPartitioner extends MongoPartitioner {
                     .map(_.get(partitionKey))
               }
             })).collect({ case Some(boundary) => boundary })
-
-
         }
+
+        implicit object BsonValueOrdering extends BsonValueOrdering
+        val rightHandBoundaries = unSortedRightHandBoundaries.sorted
         PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries, PartitionerHelper.locations(connector))
       case Failure(ex: MongoCommandException) if ex.getErrorMessage.endsWith("not found.") =>
         logInfo(s"Could not find collection (${readConfig.collectionName}), using a single partition")

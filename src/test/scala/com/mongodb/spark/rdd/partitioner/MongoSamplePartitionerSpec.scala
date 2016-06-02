@@ -28,9 +28,9 @@ class MongoSamplePartitionerSpec extends RequiresMongoDB {
     val rightHandBoundaries = (1 to 100 by 10).map(x => new BsonString(f"$x%05d"))
     val locations = PartitionerHelper.locations(MongoConnector(sparkConf))
     val expectedPartitions = PartitionerHelper.createPartitions(readConfig.partitionKey, rightHandBoundaries, locations)
-//    val partitions = MongoSamplePartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 1))
-//
-//    partitions should equal(expectedPartitions)
+    //    val partitions = MongoSamplePartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 1))
+    //
+    //    partitions should equal(expectedPartitions)
 
     val singlePartition = PartitionerHelper.createPartitions(readConfig.partitionKey, Seq.empty[BsonValue], locations)
     MongoSamplePartitioner.partitions(mongoConnector, readConfig.copy(partitionSizeMB = 10)) should equal(singlePartition)
