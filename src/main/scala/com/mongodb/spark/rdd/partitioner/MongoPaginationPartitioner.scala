@@ -36,6 +36,8 @@ import com.mongodb.spark.config.ReadConfig
  */
 case object MongoPaginationPartitioner extends MongoPartitioner {
 
+  private implicit object BsonValueOrdering extends BsonValueOrdering
+
   /**
    * Calculate the Partitions
    *
@@ -56,7 +58,7 @@ case object MongoPaginationPartitioner extends MongoPartitioner {
         val numberOfPartitions = math.ceil(size / partitionSizeInBytes.toFloat).toInt
         val estNumDocumentsPerPartition: Int = math.ceil(partitionSizeInBytes.toFloat / avgObjSizeInBytes).toInt
 
-        val unSortedRightHandBoundaries = estNumDocumentsPerPartition >= count match {
+        val rightHandBoundaries = estNumDocumentsPerPartition >= count match {
           case true => Seq.empty[BsonValue]
           case false =>
             val skipValues = (0 to numberOfPartitions.toInt).map(i => i * estNumDocumentsPerPartition)
@@ -75,9 +77,7 @@ case object MongoPaginationPartitioner extends MongoPartitioner {
             })).collect({ case Some(boundary) => boundary })
         }
 
-        implicit object BsonValueOrdering extends BsonValueOrdering
-        val rightHandBoundaries = unSortedRightHandBoundaries.sorted
-        PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries, PartitionerHelper.locations(connector))
+        PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries.sorted, PartitionerHelper.locations(connector))
       case Failure(ex: MongoCommandException) if ex.getErrorMessage.endsWith("not found.") =>
         logInfo(s"Could not find collection (${readConfig.collectionName}), using a single partition")
         MongoSinglePartitioner.partitions(connector, readConfig)
