@@ -16,23 +16,22 @@ In the Spark API there are some methods that accept extra options in the form of
 
 ## Input Configuration
 
-The following options are available on `SparkConf` object:
+The following options are available:
 
-Property name                              | Description                                                       | Default value
--------------------------------------------|-------------------------------------------------------------------|--------------------
-spark.mongodb.input.uri                    | The connnection string                                            |
-spark.mongodb.input.database               | The database name to read data from                               |
-spark.mongodb.input.collection             | The collection name to read data from                             |
-spark.mongodb.input.localThreshold         | The threshold for choosing a server from multiple MongoDB servers | 15 ms
-spark.mongodb.input.readPreference.name    | The name of the `ReadPreference` to use                           | Primary
-spark.mongodb.input.readPreference.tagSets | The `ReadPreference` TagSets to use                               |
-spark.mongodb.input.readConcern.level      | The `ReadConcern` level to use                                    |
-spark.mongodb.input.sampleSize             | The sample size to use when inferring the schema                  | 1000
-spark.mongodb.input.splitKey               | The partition key to split the data                               | `_id`
-spark.mongodb.input.maxChunkSize           | The maximum chunk size for partitioning an unsharded collection   | 64 MB
+Property name          | Description                                                       | Default value
+-----------------------|-------------------------------------------------------------------|--------------------
+uri                    | The connection string                                             |
+database               | The database name to read data from                               |
+collection             | The collection name to read data from                             |
+localThreshold         | The threshold for choosing a server from multiple MongoDB servers | 15 ms
+readPreference.name    | The name of the `ReadPreference` to use                           | Primary
+readPreference.tagSets | The `ReadPreference` TagSets to use                               |
+readConcern.level      | The `ReadConcern` level to use                                    |
+sampleSize             | The sample size to use when inferring the schema                  | 1000
+partitioner            | The class name of the partitioner to use to partition the data    | MongoDefaultPartitioner
 
 -----
-**Note**: When passing input configurations via an options Map then the prefix `spark.mongodb.input.` is not needed.
+**Note**: When setting input configurations in the `SparkConf` then the prefix `spark.mongodb.input.` is required.
 
 -----
 
@@ -40,18 +39,18 @@ spark.mongodb.input.maxChunkSize           | The maximum chunk size for partitio
 
 The following options are available on `SparkConf` object:
 
-Property name                                | Description                                                       | Default value
----------------------------------------------|-------------------------------------------------------------------|--------------------
-spark.mongodb.output.uri                     | The connnection string                                            |
-spark.mongodb.output.database                | The database name to write data to                                |
-spark.mongodb.output.collection              | The collection name to write data to                              |
-spark.mongodb.input.localThreshold           | The threshold for choosing a server from multiple MongoDB servers | 15 ms
-spark.mongodb.output.writeConcern.w          | The write concern w value                                         | (WriteConcern.ACKNOWLEDGED)
-spark.mongodb.output.writeConcern.journal    | The write concern journal value                                   |
-spark.mongodb.output.writeConcern.wTimeoutMS | The write concern wTimeout value                                  |
+Property name           | Description                                                       | Default value
+------------------------|-------------------------------------------------------------------|--------------------
+uri                     | The connection string                                             |
+database                | The database name to write data to                                |
+collection              | The collection name to write data to                              |
+localThreshold          | The threshold for choosing a server from multiple MongoDB servers | 15 ms
+writeConcern.w          | The write concern w value                                         | (WriteConcern.ACKNOWLEDGED)
+writeConcern.journal    | The write concern journal value                                   |
+writeConcern.wTimeoutMS | The write concern wTimeout value                                  |
 
 -----
-**Note**: When passing output configurations via an options Map then the prefix `spark.mongodb.output.` is not needed.
+**Note**: When setting output configurations in the `SparkConf` then the prefix `spark.mongodb.input.` is required.
 
 -----
 
@@ -72,6 +71,25 @@ spark.mongodb.input.database=databaseName
 spark.mongodb.input.collection=collectionName
 spark.mongodb.input.readPreference.name=primaryPreferred
 ```
+
+## Configuring Partitioners
+
+The default Partitioner is the `MongoDefaultPartitioner`, it samples the database. 
+
+Alternative partitioner implementations can be configured via the `partitioner` configuration option. For custom implementations of the 
+`MongoPartitioner` trait the full class name must be provided. If no package names are provided then the default 
+`com.mongodb.spark.rdd.partitioner` package is used.
+
+The available Partitioners are:
+
+Partitioner name                | Description
+--------------------------------|-------------
+MongoSamplePartitioner          | A general purpose partitioner for all deployments. <br>Uses the average document size and random sampling of the collection to determine suitable partitions for the collection.<br>Requires MongoDB 3.2
+MongoShardedPartitioner         | A partitioner for sharded clusters. <br>Partitions the collection based on the data chunks. <br>Requires read access to the config database.
+MongoSplitVectorPartitioner     | A partitioner for single nodes or replicaSets. Uses the `SplitVector` command on the primary node to determine the partitions of the database. <br>Requires `SplitVector` command privilege.
+MongoPaginateByCountPartitioner | A general purpose partitioner for all deployments. <br>Creates a specific number of partitions.<br>Slow as requires a query for every partition.
+MongoPaginateBySizePartitioner  | A general purpose partitioner for all deployments. <br>Creates partitions based on data size. Slow as requires a query for every partition.
+
 
 ## Configuration via system properties
 
