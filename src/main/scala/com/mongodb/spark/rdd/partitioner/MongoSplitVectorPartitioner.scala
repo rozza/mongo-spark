@@ -25,7 +25,7 @@ import org.bson._
 import com.mongodb.{MongoCommandException, MongoNotPrimaryException}
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.config.ReadConfig
-import com.mongodb.spark.exceptions.MongoSplitException
+import com.mongodb.spark.exceptions.MongoPartitionerException
 
 /**
  * The SplitVector Partitioner.
@@ -96,7 +96,7 @@ class MongoSplitVectorPartitioner extends MongoPartitioner {
           )
         }
         partitions
-      case _ => throw new MongoSplitException(s"""Could not calculate standalone splits. Server errmsg: ${result.get("errmsg")}""")
+      case _ => throw new MongoPartitionerException(s"""Could not calculate standalone splits. Server errmsg: ${result.get("errmsg")}""")
     }
   }
 }

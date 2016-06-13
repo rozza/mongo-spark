@@ -16,8 +16,11 @@
 
 package com.mongodb.spark.rdd.partitioner
 
+import scala.collection.JavaConverters._
+
 import org.bson._
 import com.mongodb.spark._
+import com.mongodb.spark.exceptions.MongoPartitionerException
 
 class MongoPaginateByCountPartitionerSpec extends RequiresMongoDB {
 
@@ -54,5 +57,13 @@ class MongoPaginateByCountPartitionerSpec extends RequiresMongoDB {
   it should "handle no collection" in {
     val expectedPartitions = MongoPaginateByCountPartitioner.partitions(mongoConnector, readConfig, pipeline)
     MongoPaginateByCountPartitioner.partitions(mongoConnector, readConfig, pipeline) should equal(expectedPartitions)
+  }
+
+  it should "throw a partitioner error if duplicate partitions are found" in {
+    collection.insertMany((1 to 100).map(i => new Document("a", 1)).toList.asJava)
+    a[MongoPartitionerException] should be thrownBy MongoPaginateByCountPartitioner.partitions(
+      mongoConnector,
+      readConfig.copy(partitionerOptions = Map("partitionKey" -> "a")), pipeline
+    )
   }
 }

@@ -80,8 +80,7 @@ class MongoPaginateByCountPartitioner extends MongoPartitioner with MongoPaginat
           logWarning("Inefficient partitioning, creating a partition per document. Decrease the `numberOfPartitions` property.")
         }
 
-        val skipValues = (0 to numberOfPartitions.toInt).map(i => i * numDocumentsPerPartition)
-        val rightHandBoundaries = calculateSkipPartitions(connector, readConfig, partitionKey, count, skipValues)
+        val rightHandBoundaries = calculatePartitions(connector, readConfig, partitionKey, count, numDocumentsPerPartition)
         PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries, PartitionerHelper.locations(connector))
       case Failure(ex: MongoCommandException) if ex.getErrorMessage.endsWith("not found.") =>
         logInfo(s"Could not find collection (${readConfig.collectionName}), using a single partition")

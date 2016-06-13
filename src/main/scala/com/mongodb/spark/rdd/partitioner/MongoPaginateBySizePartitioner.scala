@@ -73,17 +73,13 @@ class MongoPaginateBySizePartitioner extends MongoPartitioner with MongoPaginati
         val partitionSizeInBytes = partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt * 1024 * 1024
         val count = results.getNumber("count").longValue()
         val avgObjSizeInBytes = results.getNumber("avgObjSize").longValue()
-        val size = results.getNumber("size").longValue()
-        val numberOfPartitions = math.floor(size / partitionSizeInBytes.toFloat).toInt
-        val estNumDocumentsPerPartition: Int = math.floor(partitionSizeInBytes.toFloat / avgObjSizeInBytes).toInt
+        val numDocumentsPerPartition: Int = math.floor(partitionSizeInBytes.toFloat / avgObjSizeInBytes).toInt
 
-        val rightHandBoundaries = estNumDocumentsPerPartition >= count match {
+        val rightHandBoundaries = numDocumentsPerPartition >= count match {
           case true => Seq.empty[BsonValue]
           case false =>
-            val skipValues = (0 to numberOfPartitions.toInt).map(i => i * estNumDocumentsPerPartition)
-            calculateSkipPartitions(connector, readConfig, partitionKey, count, skipValues)
+            calculatePartitions(connector, readConfig, partitionKey, count, numDocumentsPerPartition)
         }
-
         PartitionerHelper.createPartitions(partitionKey, rightHandBoundaries, PartitionerHelper.locations(connector))
       case Failure(ex: MongoCommandException) if ex.getErrorMessage.endsWith("not found.") =>
         logInfo(s"Could not find collection (${readConfig.collectionName}), using a single partition")

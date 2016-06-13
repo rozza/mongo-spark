@@ -16,35 +16,54 @@
 
 package com.mongodb.spark.rdd.partitioner
 
+import scala.annotation.tailrec
+
 import org.bson.{BsonDocument, BsonMinKey, BsonValue}
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.{Filters, Projections, Sorts}
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.config.ReadConfig
+import com.mongodb.spark.exceptions.MongoPartitionerException
 
 private[partitioner] trait MongoPaginationPartitioner {
 
   private implicit object BsonValueOrdering extends BsonValueOrdering
 
-  def calculateSkipPartitions(connector: MongoConnector, readConfig: ReadConfig, partitionKey: String, count: Long, skipValues: Seq[Int]): Seq[BsonValue] = {
-    skipValues.foldLeft(List.empty[(BsonValue, Int)])({ (results: List[(BsonValue, Int)], skipValue) =>
-      skipValue >= count match {
+  protected def calculatePartitions(connector: MongoConnector, readConfig: ReadConfig, partitionKey: String, count: Long,
+                                    numDocumentsPerPartition: Int): Seq[BsonValue] = {
+
+    @tailrec
+    def accumulatePartitions(results: List[BsonValue], position: Int): List[BsonValue] = {
+      position >= count match {
         case true => results
         case false =>
-          val (preBsonValue, preSkipValue) = if (results.isEmpty) (new BsonMinKey, 0) else results.head
-          val amountToSkip = skipValue - preSkipValue
-          connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
-            val newHead: Option[(BsonValue, Int)] = Option(coll.find()
+          val (skipValue, preBsonValue) = results.isEmpty match {
+            case true  => (0, new BsonMinKey())
+            case false => (numDocumentsPerPartition, results.head)
+          }
+          val newHead: Option[BsonValue] = connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
+            Option(coll.find()
               .filter(Filters.gte(partitionKey, preBsonValue))
-              .skip(amountToSkip)
-              .limit(-1)
+              .skip(skipValue)
               .projection(Projections.include(partitionKey))
               .sort(Sorts.ascending(partitionKey))
-              .first()).map(doc => (doc.get(partitionKey), skipValue))
-            if (newHead.isDefined) newHead.get :: results else results
+              .first()).map(doc => doc.get(partitionKey))
           })
+          newHead.isDefined match {
+            case true  => accumulatePartitions(newHead.get :: results, position + numDocumentsPerPartition)
+            case false => results
+          }
       }
-    }).map(result => result._1).sorted
+    }
+
+    val partitions = accumulatePartitions(List.empty[BsonValue], 0).sorted
+    if (partitions.distinct.length != partitions.length) {
+      throw new MongoPartitionerException(
+        """Partitioner contained duplicated partitions!
+          |Pagination partitioners require partition keys that are indexed and contain unique values""".stripMargin
+      )
+    }
+    partitions
   }
 
 }
