@@ -35,9 +35,9 @@ import com.mongodb.spark.exceptions.MongoSplitException
  *
  *  $configurationProperties
  *
- *  - [[partitionKeyProperty partitionkey]], the field to partition the collection by. The field should be indexed and contain unique values.
+ *  - [[partitionKeyProperty partitionKey]], the field to partition the collection by. The field should be indexed and contain unique values.
  *     Defaults to `_id`.
- *  - [[partitionSizeMBProperty partitionsizemb]], the size (in MB) for each partition. Defaults to `64`.
+ *  - [[partitionSizeMBProperty partitionSizeMB]], the size (in MB) for each partition. Defaults to `64`.
  *
  * @since 1.0
  */
@@ -59,8 +59,9 @@ class MongoSplitVectorPartitioner extends MongoPartitioner {
     val ns: String = s"${readConfig.databaseName}.${readConfig.collectionName}"
     logDebug(s"Getting split bounds for a non-sharded collection: $ns")
 
-    val partitionKey = readConfig.partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
-    val partitionSize = readConfig.partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt
+    val partitionerOptions = readConfig.partitionerOptions.map(kv => (kv._1.toLowerCase, kv._2))
+    val partitionKey = partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
+    val partitionSize = partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt
 
     val keyPattern: BsonDocument = new BsonDocument(partitionKey, new BsonInt32(1))
     val splitVectorCommand: BsonDocument = new BsonDocument("splitVector", new BsonString(ns))

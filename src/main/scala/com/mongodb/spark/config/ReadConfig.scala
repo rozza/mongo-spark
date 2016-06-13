@@ -196,7 +196,7 @@ case class ReadConfig(
       ReadConfig.sampleSizeProperty -> sampleSize.toString,
       ReadConfig.partitionerProperty -> partitioner.getClass.getName,
       ReadConfig.localThresholdProperty -> localThreshold.toString
-    ) ++ partitionerOptions.map(kv => (s"${ReadConfig.partitionerOptionsProperty}.${kv._1}", kv._2)) ++
+    ) ++ partitionerOptions.map(kv => (s"${ReadConfig.partitionerOptionsProperty}.${kv._1}".toLowerCase, kv._2)) ++
       readPreferenceConfig.asOptions ++ readConcernConfig.asOptions
 
     connectionString match {
@@ -204,27 +204,6 @@ case class ReadConfig(
       case None      => options
     }
   }
-
-  // scalastyle:off parameter.number
-  /**
-   * Copies the ReadConfig
-   */
-  def copy(
-    databaseName:         String                         = databaseName,
-    collectionName:       String                         = collectionName,
-    connectionString:     Option[String]                 = connectionString,
-    sampleSize:           Int                            = sampleSize,
-    partitioner:          MongoPartitioner               = partitioner,
-    partitionerOptions:   collection.Map[String, String] = partitionerOptions,
-    localThreshold:       Int                            = localThreshold,
-    readPreferenceConfig: ReadPreferenceConfig           = readPreferenceConfig,
-    readConcernConfig:    ReadConcernConfig              = readConcernConfig
-  ): ReadConfig = {
-
-    new ReadConfig(databaseName, collectionName, connectionString, sampleSize, partitioner,
-      partitionerOptions.map(kv => (kv._1.toLowerCase, kv._2)), localThreshold, readPreferenceConfig, readConcernConfig)
-  }
-  // scalastyle:on parameter.number
 
   override def withOptions(options: util.Map[String, String]): ReadConfig = withOptions(options.asScala)
 

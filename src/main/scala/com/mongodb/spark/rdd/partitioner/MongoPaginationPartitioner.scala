@@ -16,9 +16,9 @@
 
 package com.mongodb.spark.rdd.partitioner
 
-import org.bson.{BsonDocument, BsonValue}
+import org.bson.{BsonDocument, BsonMinKey, BsonValue}
 import com.mongodb.client.MongoCollection
-import com.mongodb.client.model.{Projections, Sorts}
+import com.mongodb.client.model.{Filters, Projections, Sorts}
 import com.mongodb.spark.MongoConnector
 import com.mongodb.spark.config.ReadConfig
 
@@ -27,19 +27,24 @@ private[partitioner] trait MongoPaginationPartitioner {
   private implicit object BsonValueOrdering extends BsonValueOrdering
 
   def calculateSkipPartitions(connector: MongoConnector, readConfig: ReadConfig, partitionKey: String, count: Long, skipValues: Seq[Int]): Seq[BsonValue] = {
-    skipValues.map(i => connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
-      i >= count match {
-        case true => None
+    skipValues.foldLeft(List.empty[(BsonValue, Int)])({ (results: List[(BsonValue, Int)], skipValue) =>
+      skipValue >= count match {
+        case true => results
         case false =>
-          Option(coll.find()
-            .skip(i)
-            .limit(-1)
-            .projection(Projections.include(partitionKey))
-            .sort(Sorts.ascending(partitionKey))
-            .first())
-            .map(_.get(partitionKey))
+          val (preBsonValue, preSkipValue) = if (results.isEmpty) (new BsonMinKey, 0) else results.head
+          val amountToSkip = skipValue - preSkipValue
+          connector.withCollectionDo(readConfig, { coll: MongoCollection[BsonDocument] =>
+            val newHead: Option[(BsonValue, Int)] = Option(coll.find()
+              .filter(Filters.gte(partitionKey, preBsonValue))
+              .skip(amountToSkip)
+              .limit(-1)
+              .projection(Projections.include(partitionKey))
+              .sort(Sorts.ascending(partitionKey))
+              .first()).map(doc => (doc.get(partitionKey), skipValue))
+            if (newHead.isDefined) newHead.get :: results else results
+          })
       }
-    })).collect({ case Some(boundary) => boundary }).sorted
+    }).map(result => result._1).sorted
   }
 
 }

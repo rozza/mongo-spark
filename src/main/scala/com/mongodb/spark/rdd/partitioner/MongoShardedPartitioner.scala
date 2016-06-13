@@ -34,7 +34,7 @@ import com.mongodb.spark.config.ReadConfig
  *
  *  $configurationProperties
  *
- *  - [[MongoShardedPartitioner#shardKeyProperty shardkey]], the shardKey for the collection. Defaults to `_id`.
+ *  - [[MongoShardedPartitioner#shardKeyProperty shardKey]], the shardKey for the collection. Defaults to `_id`.
  *
  * @since 1.0
  */
@@ -50,8 +50,8 @@ class MongoShardedPartitioner extends MongoPartitioner {
   override def partitions(connector: MongoConnector, readConfig: ReadConfig, pipeline: Array[BsonDocument]): Array[MongoPartition] = {
     val ns: String = s"${readConfig.databaseName}.${readConfig.collectionName}"
     logDebug(s"Getting split bounds for a sharded collection: $ns")
-
-    val shardKey = readConfig.partitionerOptions.getOrElse(shardKeyProperty, DefaultShardKey)
+    val partitionerOptions = readConfig.partitionerOptions.map(kv => (kv._1.toLowerCase, kv._2))
+    val shardKey = partitionerOptions.getOrElse(shardKeyProperty, DefaultShardKey)
     val chunks: Seq[BsonDocument] = connector.withCollectionDo(
       ReadConfig("config", "chunks"), { collection: MongoCollection[BsonDocument] =>
         collection.find(Filters.eq("ns", ns)).projection(Projections.include("min", "max", "shard"))

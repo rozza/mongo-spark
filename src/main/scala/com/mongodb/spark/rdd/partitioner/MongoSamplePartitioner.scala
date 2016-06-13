@@ -35,10 +35,10 @@ import com.mongodb.spark.config.ReadConfig
  *
  * $configurationProperties
  *
- *  - [[partitionKeyProperty partitionkey]], the field to partition the collection by. The field should be indexed and contain unique values.
+ *  - [[partitionKeyProperty partitionKey]], the field to partition the collection by. The field should be indexed and contain unique values.
  *     Defaults to `_id`.
- *  - [[partitionSizeMBProperty partitionsizemb]], the size (in MB) for each partition. Defaults to `64`.
- *  - [[samplesPerPartitionProperty samplesperpartition]], the number of samples for each partition. Defaults to `10`.
+ *  - [[partitionSizeMBProperty partitionSizeMB]], the size (in MB) for each partition. Defaults to `64`.
+ *  - [[samplesPerPartitionProperty samplesPerPartition]], the number of samples for each partition. Defaults to `10`.
  *
  * *Note:* Requires MongoDB 3.2+
  *
@@ -75,9 +75,10 @@ class MongoSamplePartitioner extends MongoPartitioner {
 
     Try(PartitionerHelper.collStats(connector, readConfig)) match {
       case Success(results) =>
-        val partitionKey = readConfig.partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
-        val partitionSizeInBytes = readConfig.partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt * 1024 * 1024
-        val samplesPerPartition = readConfig.partitionerOptions.getOrElse(samplesPerPartitionProperty, DefaultSamplesPerPartition).toInt
+        val partitionerOptions = readConfig.partitionerOptions.map(kv => (kv._1.toLowerCase, kv._2))
+        val partitionKey = partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
+        val partitionSizeInBytes = partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt * 1024 * 1024
+        val samplesPerPartition = partitionerOptions.getOrElse(samplesPerPartitionProperty, DefaultSamplesPerPartition).toInt
 
         val count = results.getNumber("count").longValue()
         val avgObjSizeInBytes = results.getNumber("avgObjSize").longValue()

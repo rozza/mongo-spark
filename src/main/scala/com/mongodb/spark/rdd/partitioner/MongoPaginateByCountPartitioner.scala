@@ -33,9 +33,9 @@ import com.mongodb.spark.config.ReadConfig
  *
  * $configurationProperties
  *
- *  - [[partitionKeyProperty partitionkey]], the field to partition the collection by. The field should be indexed and contain unique values.
+ *  - [[partitionKeyProperty partitionKey]], the field to partition the collection by. The field should be indexed and contain unique values.
  *     Defaults to `_id`.
- *  - [[numberOfPartitionsProperty numberofpartitions]], the maximum number of partitions to create. Defaults to `64`.
+ *  - [[numberOfPartitionsProperty numberOfPartitions]], the maximum number of partitions to create. Defaults to `64`.
  *
  *
  * '''Note:''' This can be a expensive operation as it creates 1 cursor for every partition.
@@ -69,8 +69,9 @@ class MongoPaginateByCountPartitioner extends MongoPartitioner with MongoPaginat
 
     Try(PartitionerHelper.collStats(connector, readConfig)) match {
       case Success(results) =>
-        val partitionKey = readConfig.partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
-        val maxNumberOfPartitions = readConfig.partitionerOptions.getOrElse(numberOfPartitionsProperty, DefaultNumberOfPartitions).toInt
+        val partitionerOptions = readConfig.partitionerOptions.map(kv => (kv._1.toLowerCase, kv._2))
+        val partitionKey = partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
+        val maxNumberOfPartitions = partitionerOptions.getOrElse(numberOfPartitionsProperty, DefaultNumberOfPartitions).toInt
         val count = results.getNumber("count").longValue()
         val numberOfPartitions = if (count < maxNumberOfPartitions) count else maxNumberOfPartitions
         val numDocumentsPerPartition = math.floor(count / numberOfPartitions).toInt

@@ -33,9 +33,9 @@ import com.mongodb.spark.config.ReadConfig
  *
  * $configurationProperties
  *
- *  - [[partitionKeyProperty partitionkey]], the field to partition the collection by. The field should be indexed and contain unique values.
+ *  - [[partitionKeyProperty partitionKey]], the field to partition the collection by. The field should be indexed and contain unique values.
  *     Defaults to `_id`.
- *  - [[partitionSizeMBProperty partitionsizemb]], the size (in MB) for each partition. Defaults to `64`.
+ *  - [[partitionSizeMBProperty partitionSizeMB]], the size (in MB) for each partition. Defaults to `64`.
  *
  *
  * '''Note:''' This can be a expensive operation as it creates 1 cursor for every estimated `partitionSizeMB`s worth of documents.
@@ -68,8 +68,9 @@ class MongoPaginateBySizePartitioner extends MongoPartitioner with MongoPaginati
 
     Try(PartitionerHelper.collStats(connector, readConfig)) match {
       case Success(results) =>
-        val partitionKey = readConfig.partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
-        val partitionSizeInBytes = readConfig.partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt * 1024 * 1024
+        val partitionerOptions = readConfig.partitionerOptions.map(kv => (kv._1.toLowerCase, kv._2))
+        val partitionKey = partitionerOptions.getOrElse(partitionKeyProperty, DefaultPartitionKey)
+        val partitionSizeInBytes = partitionerOptions.getOrElse(partitionSizeMBProperty, DefaultPartitionSizeMB).toInt * 1024 * 1024
         val count = results.getNumber("count").longValue()
         val avgObjSizeInBytes = results.getNumber("avgObjSize").longValue()
         val size = results.getNumber("size").longValue()
