@@ -18,7 +18,7 @@ package com.mongodb.spark
 
 import scala.language.implicitConversions
 
-import org.apache.spark.sql.{DataFrameReader, DataFrameWriter, SQLContext}
+import org.apache.spark.sql.{DataFrameReader, DataFrameWriter, SQLContext, SparkSession}
 
 /**
  * The Mongo Spark Connector Sql package
@@ -31,7 +31,15 @@ package object sql {
    * @param sqlContext the current SQLContext
    * @return the MongoDB based SQLContext
    */
-  implicit def toSparkSQLContextFunctions(sqlContext: SQLContext): SparkSQLContextFunctions = SparkSQLContextFunctions(sqlContext)
+  implicit def toSparkSessionFunctions(sqlContext: SQLContext): SparkSessionFunctions = toSparkSessionFunctions(sqlContext.sparkSession)
+
+  /**
+   * Helper to implicitly add MongoDB based functions to a SQLContext
+   *
+   * @param sparkSession the current SparkSession
+   * @return the MongoDB based SQLContext
+   */
+  implicit def toSparkSessionFunctions(sparkSession: SparkSession): SparkSessionFunctions = SparkSessionFunctions(sparkSession)
 
   /**
    * Helper to implicitly add MongoDB based functions to a DataFrameReader
