@@ -31,6 +31,7 @@ package object sql {
    * @param sqlContext the current SQLContext
    * @return the MongoDB based SQLContext
    */
+  @deprecated("As of Spark 2.0 SQLContext was replaced by SparkSession. Use the SparkSession method instead", "2.0.0")
   implicit def toSparkSessionFunctions(sqlContext: SQLContext): SparkSessionFunctions = toSparkSessionFunctions(sqlContext.sparkSession)
 
   /**
