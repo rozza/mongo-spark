@@ -1,5 +1,8 @@
 # Mongo Spark Connector Changelog
 
+## 1.1.0
+  * [[SPARK-71](https://jira.mongodb.org/browse/SPARK-71)] Added support for Spark MapTypes in schemas.
+
 ## 1.0.0
   * [[SPARK-65](https://jira.mongodb.org/browse/SPARK-65)] Performance improvement. Don't append the pipeline when using MongoSinglePartitioner.
   * [[SPARK-63](https://jira.mongodb.org/browse/SPARK-63)] MongoInferSchema now operates on a single partition.
