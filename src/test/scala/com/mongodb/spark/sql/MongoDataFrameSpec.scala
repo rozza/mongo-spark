@@ -135,7 +135,7 @@ class MongoDataFrameSpec extends RequiresMongoDB {
     df.schema should equal(createStructType(expectedSchema.fields.filter(p => p.name != "name")))
   }
 
-  it should "use any pipelines when set vai the MongoRDD" in withSparkContext() { sc =>
+  it should "use any pipelines when set via the MongoRDD" in withSparkContext() { sc =>
     sc.parallelize(characters).saveToMongoDB()
     sc.parallelize(List("{counter: 1}", "{counter: 2}", "{counter: 3}").map(Document.parse)).saveToMongoDB()
     val sparkSession = SparkSession.builder().getOrCreate()
