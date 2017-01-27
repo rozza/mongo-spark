@@ -7,12 +7,11 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #       MONGODB_URI             Set the suggested connection MONGODB_URI (including credentials and topology info)
 
 MONGODB_URI=${MONGODB_URI:-}
-TOPOLOGY=${TOPOLOGY:-server}
+JAVA_HOME="/opt/java/jdk8"
 
 ############################################
 #            Main Program                  #
 ############################################
-JAVA_HOME="/opt/java/jdk8"
 
 echo "Running coverage"
 
