@@ -17,6 +17,5 @@ echo "Running coverage"
 
 ./sbt -java-home $JAVA_HOME version
 ./sbt -java-home $JAVA_HOME coverage test -Dorg.mongodb.test.uri=${MONGODB_URI}
-./sbt -java-home $JAVA_HOME coverage it:test -Dorg.mongodb.test.uri=${MONGODB_URI}
 ./sbt -java-home $JAVA_HOME coverageAggregate
 ./sbt -java-home $JAVA_HOME coverageReport
