@@ -275,14 +275,14 @@ functions:
           ${PREPARE_SHELL}
           .evergreen/run-scalastyle.sh
 
-  "run coverage tests":
+  "run coverage":
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-coverage.sh
+          MONGODB_URI="${MONGODB_URI}" .evergreen/run-coverage.sh
 
   "run tests":
     - command: shell.exec
@@ -336,7 +336,7 @@ tasks:
           vars:
             VERSION: "3.4"
             TOPOLOGY: "server"
-        - func: "run coverage tests"
+        - func: "run coverage"
         - func: "upload build"
 
     - name: "test-task"
