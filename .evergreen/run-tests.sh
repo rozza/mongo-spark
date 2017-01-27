@@ -32,14 +32,14 @@ provision_ssl () {
     echo "y" | ${JAVA_HOME}/bin/keytool -importcert -trustcacerts -file ${DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem -keystore mongo-truststore -storepass hithere
   fi
 
-  # We add extra gradle arguments for SSL
-  export GRADLE_EXTRA_VARS="-Pssl.enabled=true -Pssl.keyStoreType=pkcs12 -Pssl.keyStore=`pwd`/client.pkc -Pssl.keyStorePassword=bithere -Pssl.trustStoreType=jks -Pssl.trustStore=`pwd`/mongo-truststore -Pssl.trustStorePassword=hithere"
+  # We add extra java options arguments for SSL
+  export _JAVA_OPTIONS=" -Djavax.net.ssl.keyStoreType=pkcs12 -Djavax.net.ssl.keyStore=`pwd`/client.pkc -Djavax.net.ssl.keyStorePassword=bithere -Djavax.net.ssl.trustStoreType=jks -Djavax.net.ssl.trustStore=`pwd`/mongo-truststore -Djavax.net.ssl.trustStorePassword=hithere"
 
   # Arguments for auth + SSL
   if [ "$AUTH" != "noauth" ] || [ "$TOPOLOGY" == "replica_set" ]; then
-    export MONGODB_URI="${MONGODB_URI}&ssl=true&sslInvalidHostNameAllowed=true"
+    export MONGODB_URI="${MONGODB_URI}&ssl=true"
   else
-    export MONGODB_URI="${MONGODB_URI}/?ssl=true&sslInvalidHostNameAllowed=true"
+    export MONGODB_URI="${MONGODB_URI}/?ssl=true"
   fi
 }
 
