@@ -446,8 +446,15 @@ buildvariants:
   tasks:
     - name: "coverage-task"
 
-- matrix_name: "tests-3.4"
-  matrix_spec: { version: "3.4", scalaVersion: "*", auth: "*", ssl: "*", topology: "*", os: "*" }
+- matrix_name: "tests-3.4-auth-ssl"
+  matrix_spec: { version: "3.4", scalaVersion: "*", auth: "auth", ssl: "ssl", topology: "standalone", os: "*" }
+  display_name: "Tests: Scala ${scalaVersion} ${version} ${topology} ${auth} ${ssl} ${os}"
+  tags: ["tests"]
+  tasks:
+     - name: "test-task"
+
+- matrix_name: "tests-3.4-topology"
+  matrix_spec: { version: "3.4", scalaVersion: "*", auth: "noauth", ssl: "nossl", topology: "*", os: "*" }
   display_name: "Tests: Scala ${scalaVersion} ${version} ${topology} ${auth} ${ssl} ${os}"
   tags: ["tests"]
   tasks:
