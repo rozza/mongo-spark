@@ -454,7 +454,7 @@ buildvariants:
      - name: "test-task"
 
 - matrix_name: "tests-older"
-  matrix_spec: { version: "*", scalaVersion: "*", auth: "noauth", ssl: "nossl", topology: "standalone", os: "*" }
+  matrix_spec: { version: "*", scalaVersion: "*", auth: "noauth", ssl: "nossl", topology: "server", os: "*" }
   exclude_spec: { version: "3.4", scalaVersion: "*", auth: "*", ssl: "*", topology: "*", os: "*" }
   display_name: "Tests: Scala ${scalaVersion} ${version} ${topology} ${auth} ${ssl} ${os}"
   tags: ["tests"]
