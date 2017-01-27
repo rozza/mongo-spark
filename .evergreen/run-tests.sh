@@ -58,12 +58,14 @@ if [ "$TOPOLOGY" == "sharded_cluster" ]; then
      fi
 fi
 
-if [ "$SSL" != "nossl" ]; then
-   provision_ssl
-fi
-
 echo "Running Scala $SCALA_VERSION test with $AUTH over $SSL for $TOPOLOGY and connecting to $MONGODB_URI"
 
 
 ./sbt -java-home $JAVA_HOME version
+
+if [ "$SSL" != "nossl" ]; then
+    ./sbt -java-home $JAVA_HOME ++${SCALA_VERSION} compile
+    provision_ssl
+fi
+
 ./sbt -java-home $JAVA_HOME ++${SCALA_VERSION} test -Dorg.mongodb.test.uri=${MONGODB_URI}
