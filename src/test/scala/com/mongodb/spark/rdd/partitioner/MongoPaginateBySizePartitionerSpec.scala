@@ -76,18 +76,22 @@ class MongoPaginateBySizePartitionerSpec extends RequiresMongoDB {
 
   it should "use the users pipeline when set in a rdd / dataframe" in withSparkContext() { sc =>
     if (!serverAtLeast(3, 2)) cancel("Testing on MongoDB 3.2+, so to have predictable partition sizes.")
-    loadSampleData(10)
+    val numberOfDocuments = 10000
+    loadSampleData(10, numberOfDocuments)
 
     val readConf = readConfig.copy(partitioner = MongoPaginateBySizePartitioner, partitionerOptions = Map("partitionSizeMB" -> "1"))
     val rangePipeline = BsonDocument.parse(s"""{$$match: { $partitionKey: {$$gte: "00001", $$lt: "00031"}}}""")
     val sparkSession = SparkSession.builder().getOrCreate()
     val rdd = MongoSpark.load(sparkSession.sparkContext, readConf).withPipeline(Seq(rangePipeline))
     rdd.count() should equal(30)
-    rdd.partitions.length should equal(3)
+    rdd.partitions.length should equal(1)
 
     val df = MongoSpark.load(sparkSession, readConf).filter(s"""$partitionKey >= "00001" AND  $partitionKey < "00031"""")
     df.count() should equal(30)
-    df.rdd.partitions.length should equal(3)
+    df.rdd.partitions.length should equal(1)
+
+    val df2 = MongoSpark.load(sparkSession, readConf).filter(s"""$partitionKey >= "00000"""")
+    df2.count() should equal(numberOfDocuments)
   }
   // scalastyle:on magic.number
 
