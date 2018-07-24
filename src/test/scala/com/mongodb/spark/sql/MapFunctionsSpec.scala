@@ -29,6 +29,7 @@ import org.bson.BsonDocument
 import com.mongodb.spark.RequiresMongoDB
 import com.mongodb.spark.exceptions.MongoTypeConversionException
 import com.mongodb.spark.sql.MapFunctions.{documentToRow, rowToDocument}
+import com.mongodb.spark.sql.fieldTypes.{ObjectId}
 
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
@@ -48,6 +49,10 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
   case class MixedNumericsDouble(num: Double)
 
   case class MixedNumericsDecimal(num: BigDecimal)
+
+  case class Relation(firstPerson: ObjectId, secondPerson: ObjectId, relationType: String)
+
+  case class RelationshipDatabase(person: ObjectId, siblings: List[ObjectId], parents: Map[String, ObjectId])
 
   def schemaFor[T <: Product: TypeTag]: StructType = ScalaReflection.schemaFor[T].dataType.asInstanceOf[StructType]
 
@@ -123,7 +128,7 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
     val schema = StructType(Seq(StructField("test", MapType(IntegerType, StringType), nullable = true)))
 
     val row = new GenericRowWithSchema(Array(Map(1 -> "one")), schema)
-    an[MongoTypeConversionException] should be thrownBy rowToDocument(row)
+    an[MongoTypeConversionException] should be thrownBy rowToDocument(row.schema)(row)
   }
 
   "rowToDocument" should "convert a Row into a Document" in {
@@ -131,7 +136,7 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
     val original: BsonDocument = BsonDocument.parse("{name: 'John', age: 18}")
 
     val row: Row = documentToRow(original, schema)
-    val converted: BsonDocument = rowToDocument(row)
+    val converted: BsonDocument = rowToDocument(row.schema)(row)
 
     converted should equal(original)
   }
@@ -147,7 +152,7 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
     )
 
     val row: Row = documentToRow(original, schema)
-    val converted: BsonDocument = rowToDocument(row)
+    val converted: BsonDocument = rowToDocument(row.schema)(row)
 
     converted should equal(original)
   }
@@ -161,7 +166,38 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
     )
 
     val row: Row = documentToRow(original, schema)
-    val converted: BsonDocument = rowToDocument(row)
+    val converted: BsonDocument = rowToDocument(row.schema)(row)
+
+    converted should equal(original)
+  }
+
+  it should "handle converting mongo types to bson correctly" in {
+    val schema: StructType = schemaFor[Relation]
+    val original: BsonDocument = BsonDocument.parse(
+      """{
+        |firstPerson: ObjectId("5b532ac8966a17426389977c"),
+        |secondPerson: ObjectId("5b532adbbd56bf96a3735d0f"),
+        |relationType: "father"}""".stripMargin
+    )
+
+    val row: Row = documentToRow(original, schema)
+    val converted: BsonDocument = rowToDocument(row.schema)(row)
+
+    converted should equal(original)
+  }
+
+  it should "handle converting complex structs with mongo types to bson correctly" in {
+    val schema: StructType = schemaFor[RelationshipDatabase]
+    val original: BsonDocument = BsonDocument.parse(
+      """{
+        |person: ObjectId("5b532adbbd56bf96a3735d0f"),
+        |siblings: [ObjectId("5b532fb819fabeb1d382fe56")],
+        |parents: { father: ObjectId("5b532ac8966a17426389977c"), mother: ObjectId("5b532fcf6f6a048ac2afec84") },
+        |}""".stripMargin
+    )
+
+    val row: Row = documentToRow(original, schema)
+    val converted: BsonDocument = rowToDocument(row.schema)(row)
 
     converted should equal(original)
   }
@@ -175,16 +211,20 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
     val allTypes = Seq(bsonIntDoc, bsonLongDoc, bsonDoubleDoc, bsonDecimalDoc)
 
     for (elem <- allTypes) {
-      val convertedInt = rowToDocument(documentToRow(elem, schemaFor[MixedNumericsInt]))
+      val row = documentToRow(elem, schemaFor[MixedNumericsInt])
+      val convertedInt = rowToDocument(row.schema)(row)
       convertedInt should equal(bsonIntDoc)
 
-      val convertedLong = rowToDocument(documentToRow(elem, schemaFor[MixedNumericsLong]))
+      val row2 = documentToRow(elem, schemaFor[MixedNumericsLong])
+      val convertedLong = rowToDocument(row2.schema)(row2)
       convertedLong should equal(bsonLongDoc)
 
-      val convertedDouble = rowToDocument(documentToRow(elem, schemaFor[MixedNumericsDouble]))
+      val row3 = documentToRow(elem, schemaFor[MixedNumericsDouble])
+      val convertedDouble = rowToDocument(row3.schema)(row3)
       convertedDouble should equal(bsonDoubleDoc)
 
-      val convertedDecimal = rowToDocument(documentToRow(elem, schemaFor[MixedNumericsDecimal]))
+      val row4 = documentToRow(elem, schemaFor[MixedNumericsDecimal])
+      val convertedDecimal = rowToDocument(row4.schema)(row4)
       if (elem == bsonDoubleDoc) {
         convertedDecimal should equal(bsonDecimalDoubleDoc)
       } else {
@@ -195,7 +235,8 @@ class MapFunctionsSpec extends RequiresMongoDB with GeneratorDrivenPropertyCheck
 
   it should "throw a MongoTypeConversionException when casting to an invalid DataType" in {
     an[MongoTypeConversionException] should be thrownBy documentToRow(BsonDocument.parse("{num: [1]}"), schemaFor[MixedNumericsDouble])
-    an[MongoTypeConversionException] should be thrownBy rowToDocument(new GenericRowWithSchema(Array(Array(1)), schemaFor[MixedNumericsDouble]))
+    val row = new GenericRowWithSchema(Array(Array(1)), schemaFor[MixedNumericsDouble])
+    an[MongoTypeConversionException] should be thrownBy rowToDocument(row.schema)(row)
   }
   // scalastyle:on magic.number null
 }
