@@ -31,13 +31,34 @@ import org.bson.{BsonArray, BsonDocument, BsonType, Document}
 
 import scala.collection.JavaConverters._
 
-class DefaultSource extends DataSourceV2 with ReadSupport with ReadSupportWithSchema {
+class DefaultSource extends DataSourceV2 with ReadSupport with ReadSupportWithSchema with WriteSupport {
 
   override def createReader(options: DataSourceOptions): DataSourceReader = createReader(None, options)
 
   override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = createReader(Some(schema), options)
 
   private def createReader(schema: Option[StructType], options: DataSourceOptions): DataSourceReader = {
-    MongoDataSourceReader(schema, ReadConfig(options.asMap().asScala.toMap, None))
+    MongoDataSourceReader(schema, ReadConfig(optionsToMap(options), None))
+
   }
+
+  override def createWriter(jobId: String, schema: StructType, mode: SaveMode, options: DataSourceOptions): Optional[DataSourceWriter] = {
+    val writeConfig = WriteConfig(optionsToMap(options), None)
+    val mongoConnector = MongoConnector(writeConfig.asOptions)
+    lazy val collectionExists: Boolean = mongoConnector.withDatabaseDo(
+      writeConfig, { db => db.listCollectionNames().asScala.toList.contains(writeConfig.collectionName) }
+    )
+
+    val dataSourceWriter: DataSourceWriter = MongoDataSourceWriter(writeConfig, schema, mode)
+    mode match {
+      case ErrorIfExists if collectionExists => throw new UnsupportedOperationException("MongoCollection already exists")
+      case Ignore if collectionExists        => Optional.empty()
+      case Overwrite =>
+        mongoConnector.withCollectionDo(writeConfig, { collection: MongoCollection[Document] => collection.drop() })
+        Optional.of(dataSourceWriter)
+      case _ => Optional.of(dataSourceWriter)
+    }
+  }
+
+  private def optionsToMap(options: DataSourceOptions) = options.asMap().asScala.toMap
 }

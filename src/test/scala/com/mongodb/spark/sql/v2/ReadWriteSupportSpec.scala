@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package com.mongodb.spark.sql
+package com.mongodb.spark.sql.v2
 
-class DataFrameWriterSpec extends WriteSupportSpecBase {
-  override val defaultSource: String = "com.mongodb.spark.sql.DefaultSource"
-  override val defaultSourceV2: Boolean = false
+import com.mongodb.spark.sql.ReadWriteSupportSpecBase
+
+class ReadWriteSupportSpec extends ReadWriteSupportSpecBase {
+  override val defaultSource: String = "com.mongodb.spark.sql.v2.DefaultSource"
+  override val defaultSourceV2: Boolean = true
 }
