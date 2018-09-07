@@ -24,15 +24,14 @@ import com.mongodb.spark.config.ReadConfig
 import com.mongodb.spark.rdd.partitioner.MongoPartition
 import com.mongodb.spark.sql.MapFunctions.documentToRow
 import com.mongodb.spark.sql.{MongoInferSchema, MongoRelationHelper}
-import com.mongodb.spark.sql.MongoRelationHelper.createPipeline
 import com.mongodb.spark.{LoggingTrait, MongoConnector, MongoSpark}
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.sources.{Filter, IsNotNull}
 import org.apache.spark.sql.sources.v2.reader.{DataReader, DataReaderFactory, DataSourceReader, SupportsPushDownFilters, SupportsPushDownRequiredColumns}
+import org.apache.spark.sql.sources.{Filter, IsNotNull}
 import org.apache.spark.sql.types.StructType
+import org.bson.BsonDocument
 import org.bson.conversions.Bson
-import org.bson.{BsonArray, BsonDocument, BsonType}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable

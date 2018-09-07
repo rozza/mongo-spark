@@ -16,18 +16,10 @@
 
 package com.mongodb.spark.sql.v2
 
-import java.util.Optional
-
-import com.mongodb.client.MongoCollection
-import com.mongodb.spark.MongoConnector
-import com.mongodb.spark.config.{ReadConfig, WriteConfig}
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.SaveMode.{ErrorIfExists, Ignore, Overwrite}
+import com.mongodb.spark.config.ReadConfig
 import org.apache.spark.sql.sources.v2.reader.DataSourceReader
-import org.apache.spark.sql.sources.v2.writer.DataSourceWriter
-import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport, ReadSupportWithSchema, WriteSupport}
+import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport, ReadSupportWithSchema}
 import org.apache.spark.sql.types.StructType
-import org.bson.{BsonArray, BsonDocument, BsonType, Document}
 
 import scala.collection.JavaConverters._
 
