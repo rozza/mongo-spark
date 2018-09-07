@@ -3,7 +3,8 @@
 ## 2.3.1
   * Updated Mongo Java Driver to 3.8.1
   * [[SPARK-206](https://jira.mongodb.org/browse/SPARK-206)] Updated Spark dependency to 2.3.1 
-  * [[SPARK-201](https://jira.mongodb.org/browse/SPARK-201)] Added Datasource v2 read support 
+  * [[SPARK-201](https://jira.mongodb.org/browse/SPARK-201)] Added Datasource v2 read support
+  * [[SPARK-202](https://jira.mongodb.org/browse/SPARK-201)] Added Datasource v2 write support
 
 ## 2.3.0
   * [[SPARK-156](https://jira.mongodb.org/browse/SPARK-156)] Updated Spark dependency to 2.3.0. Dropped Scala 2.10 support.

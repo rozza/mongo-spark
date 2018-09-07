@@ -16,22 +16,52 @@
 
 package com.mongodb.spark.sql.v2
 
-import com.mongodb.spark.config.ReadConfig
+import java.util.Optional
+
+import com.mongodb.client.MongoCollection
+import com.mongodb.spark.MongoConnector
+import com.mongodb.spark.config.{ReadConfig, WriteConfig}
 import org.apache.spark.annotation.InterfaceStability
+import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.SaveMode.{Append, ErrorIfExists, Ignore, Overwrite}
 import org.apache.spark.sql.sources.v2.reader.DataSourceReader
-import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport, ReadSupportWithSchema}
+import org.apache.spark.sql.sources.v2.writer.DataSourceWriter
+import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport, ReadSupportWithSchema, WriteSupport}
 import org.apache.spark.sql.types.StructType
+import org.bson.Document
 
 import scala.collection.JavaConverters._
 
 @InterfaceStability.Evolving
-class DefaultSource extends DataSourceV2 with ReadSupport with ReadSupportWithSchema {
+class DefaultSource extends DataSourceV2 with ReadSupport with ReadSupportWithSchema with WriteSupport {
 
   override def createReader(options: DataSourceOptions): DataSourceReader = createReader(None, options)
 
   override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = createReader(Some(schema), options)
 
   private def createReader(schema: Option[StructType], options: DataSourceOptions): DataSourceReader = {
-    MongoDataSourceReader(schema, ReadConfig(options.asMap().asScala.toMap, None))
+    MongoDataSourceReader(schema, ReadConfig(optionsToMap(options), None))
+
   }
+
+  override def createWriter(jobId: String, schema: StructType, mode: SaveMode, options: DataSourceOptions): Optional[DataSourceWriter] = {
+    val writeConfig = WriteConfig(optionsToMap(options), None)
+    val mongoConnector = MongoConnector(writeConfig.asOptions)
+    lazy val collectionExists: Boolean = mongoConnector.withDatabaseDo(
+      writeConfig, { db => db.listCollectionNames().asScala.toList.contains(writeConfig.collectionName) }
+    )
+
+    val dataSourceWriter: DataSourceWriter = MongoDataSourceWriter(writeConfig, schema, mode)
+    mode match {
+      case ErrorIfExists if collectionExists => throw new UnsupportedOperationException("Collection already exists")
+      case Ignore if collectionExists        => Optional.empty()
+      case Overwrite =>
+        mongoConnector.withCollectionDo(writeConfig, { collection: MongoCollection[Document] => collection.drop() })
+        Optional.of(dataSourceWriter)
+      case Append => Optional.of(dataSourceWriter)
+      case _ => throw new UnsupportedOperationException(s"Unsupported SaveMode: $mode")
+    }
+  }
+
+  private def optionsToMap(options: DataSourceOptions) = options.asMap().asScala.toMap
 }

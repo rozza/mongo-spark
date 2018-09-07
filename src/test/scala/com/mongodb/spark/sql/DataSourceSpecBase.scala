@@ -32,8 +32,8 @@ import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 
 trait DataSourceSpecBase extends RequiresMongoDB with TableDrivenPropertyChecks {
-  val defaultSource: String = "com.mongodb.spark.sql.DefaultSource"
-  val defaultSourceV2: Boolean = false
+  val defaultSource: String
+  val defaultSourceV2: Boolean
 
   val characters: Seq[Document] =
     """
