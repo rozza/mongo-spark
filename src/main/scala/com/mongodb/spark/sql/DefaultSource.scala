@@ -73,7 +73,7 @@ class DefaultSource extends DataSourceRegister with RelationProvider with Schema
         MongoSpark.save(data, writeConfig)
       case ErrorIfExists =>
         if (collectionExists) {
-          throw new UnsupportedOperationException("MongoCollection already exists")
+          throw new UnsupportedOperationException("Collection already exists")
         } else {
           MongoSpark.save(data, writeConfig)
         }
