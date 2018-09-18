@@ -44,6 +44,7 @@ object ReadConfig extends MongoInputConfig with LoggingTrait {
   type Self = ReadConfig
 
   private val DefaultSampleSize: Int = 1000
+  private val DefaultSamplePoolSize: Int = 10000
   private val DefaultPartitioner = DefaultMongoPartitioner
   private val DefaultPartitionerOptions = Map.empty[String, String]
   private val DefaultPartitionerPath = "com.mongodb.spark.rdd.partitioner."
@@ -98,7 +99,8 @@ object ReadConfig extends MongoInputConfig with LoggingTrait {
         cleanedOptions.get(pipelineIncludeFiltersAndProjectionsProperty),
         default.map(conf => conf.pipelineIncludeFiltersAndProjections),
         DefaultPipelineIncludeFiltersAndProjections
-      )
+      ),
+      samplePoolSize = getInt(cleanedOptions.get(samplePoolSizeProperty), default.map(conf => conf.samplePoolSize), DefaultSamplePoolSize)
     )
   }
 
@@ -384,7 +386,8 @@ case class ReadConfig(
     inferSchemaMapTypesEnabled:           Boolean                        = ReadConfig.DefaultInferSchemaMapTypesEnabled,
     inferSchemaMapTypesMinimumKeys:       Int                            = ReadConfig.DefaultInferSchemaMapTypesMinimumKeys,
     pipelineIncludeNullFilters:           Boolean                        = ReadConfig.DefaultPipelineIncludeNullFilters,
-    pipelineIncludeFiltersAndProjections: Boolean                        = ReadConfig.DefaultPipelineIncludeFiltersAndProjections
+    pipelineIncludeFiltersAndProjections: Boolean                        = ReadConfig.DefaultPipelineIncludeFiltersAndProjections,
+    samplePoolSize:                       Int                            = ReadConfig.DefaultSamplePoolSize
 ) extends MongoCollectionConfig with MongoClassConfig {
   require(Try(connectionString.map(uri => new ConnectionString(uri))).isSuccess, s"Invalid uri: '${connectionString.get}'")
   require(sampleSize > 0, s"sampleSize ($sampleSize) must be greater than 0")
@@ -401,6 +404,7 @@ case class ReadConfig(
       ReadConfig.databaseNameProperty -> databaseName,
       ReadConfig.collectionNameProperty -> collectionName,
       ReadConfig.sampleSizeProperty -> sampleSize.toString,
+      ReadConfig.samplePoolSizeProperty -> samplePoolSize.toString,
       ReadConfig.partitionerProperty -> partitioner.getClass.getName,
       ReadConfig.localThresholdProperty -> localThreshold.toString,
       ReadConfig.registerSQLHelperFunctionsProperty -> registerSQLHelperFunctions.toString,
