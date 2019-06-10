@@ -17,10 +17,13 @@
 package com.mongodb.spark.sql.helpers
 
 import javax.xml.bind.DatatypeConverter
-
-import org.apache.spark.sql.SparkSession
-
+import org.apache.spark.sql.{Column, SparkSession}
 import com.mongodb.spark.sql.fieldTypes
+import com.mongodb.spark.sql.types.BsonCompatibility
+import org.apache.spark.sql.catalyst.dsl.expressions
+import org.apache.spark.sql.catalyst.expressions.codegen.{Block, CodegenContext, ExprCode, FalseLiteral}
+import org.apache.spark.sql.catalyst.expressions.{CreateNamedStructLike, Expression, GenericInternalRow, NullIntolerant, ScalaUDF, UnaryExpression}
+import org.apache.spark.sql.types.{DataType, StructType}
 
 /**
  * The udf package provides User Defined Functions that can be used to support querying unsupported Bson Types in Spark.
@@ -144,6 +147,40 @@ object UDF {
    * @return a fieldType that can be used to query against
    */
   def objectId(oid: String): fieldTypes.ObjectId = fieldTypes.ObjectId(oid)
+//  case class ObjectId_Native(id: String) extends UnaryExpression with NullIntolerant {
+//
+//    override def dataType: DataType = StructType(BsonCompatibility.ObjectId.fields)
+//
+//    override def prettyName: String = "ObjectId"
+//
+//    override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = nullSafeCodeGen(ctx, ev, c => s"${ev.value}.oid = $c")
+//  }
+//
+
+
+  def ObjectId(oid: String): ScalaUDF = ScalaUDF((oid: String) => ())  extends CreateNamedStructLike {
+    import Block._
+    override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+      val rowClass = classOf[GenericInternalRow].getName
+      val valuesCode = ctx.splitExpressionsWithCurrentInputs(
+        expressions = Seq("oid", oid),
+        funcName = "createObjectId",
+        extraArguments = "Object[]" -> oid :: Nil)
+
+      ev.copy(code =
+        code"""
+              |Object[] values = new Object[2];
+              |values[0] = "oid"
+              |values[1] = $oid
+              |final InternalRow ${ev.value} = new $rowClass(values);
+              |values = null;
+       """.stripMargin, isNull = FalseLiteral)
+    }
+
+    override def prettyName: String = "ObjectId"
+
+    override def children: Seq[Expression] = Seq()
+  }
 
   /**
    * This method can be used as a user defined function to aid the querying of regular expression values.
@@ -211,10 +248,12 @@ object UDF {
     sparkSession.udf.register("JavaScript", UDF.javaScriptWithScope _)
     sparkSession.udf.register("maxKey", UDF.maxKey _)
     sparkSession.udf.register("minKey", UDF.minKey _)
-    sparkSession.udf.register("ObjectId", UDF.objectId _)
+    //sparkSession.udf.register("ObjectId", UDF.objectId _)
     sparkSession.udf.register("RegexNoOptions", UDF.regularExpression _)
     sparkSession.udf.register("Regex", UDF.regularExpressionWithOptions _)
     sparkSession.udf.register("Symbol", UDF.symbol _)
     sparkSession.udf.register("Timestamp", UDF.timestamp _)
+
+    sparkSession.udf.register("ObjectId", ObjectId _)
   }
 }

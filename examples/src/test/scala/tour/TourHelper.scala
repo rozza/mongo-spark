@@ -40,6 +40,7 @@ private[tour] trait TourHelper {
       .set("spark.app.id", "MongoSparkConnectorTour")
       .set("spark.mongodb.input.uri", uri)
       .set("spark.mongodb.output.uri", uri)
+      .set("spark.mongodb.input.registerSQLHelperFunctions", "true")
 
     val session = SparkSession.builder().config(conf).getOrCreate()
     MongoConnector(session.sparkContext).withDatabaseDo(WriteConfig(session), {db => db.drop()})

@@ -17,10 +17,8 @@
 package tour
 
 import org.apache.spark.sql.{SQLContext, SparkSession}
-
 import org.bson.Document
-import org.bson.types.ObjectId
-import com.mongodb.spark.config.ReadConfig
+import com.mongodb.spark.sql.helpers.UDF
 
 
 /**
@@ -40,17 +38,18 @@ object SparkSQL extends TourHelper {
 
     // Load sample data
     import com.mongodb.spark._
-    val docs = """
-                       |{"name": "Bilbo Baggins", "age": 50}
-                       |{"name": "Gandalf", "age": 1000}
-                       |{"name": "Thorin", "age": 195}
-                       |{"name": "Balin", "age": 178}
-                       |{"name": "Kíli", "age": 77}
-                       |{"name": "Dwalin", "age": 169}
-                       |{"name": "Óin", "age": 167}
-                       |{"name": "Glóin", "age": 158}
-                       |{"name": "Fíli", "age": 82}
-                       |{"name": "Bombur"}""".trim.stripMargin.split("[\\r\\n]+").toSeq
+    val docs =
+      """
+        |{"_id": {$oid: "5cfa614103b1094078010fa7"}, "name": "Bilbo Baggins", "age": 50}
+        |{"name": "Gandalf", "age": 1000}
+        |{"name": "Thorin", "age": 195}
+        |{"name": "Balin", "age": 178}
+        |{"name": "Kíli", "age": 77}
+        |{"name": "Dwalin", "age": 169}
+        |{"name": "Óin", "age": 167}
+        |{"name": "Glóin", "age": 158}
+        |{"name": "Fíli", "age": 82}
+        |{"name": "Bombur"}""".trim.stripMargin.split("[\\r\\n]+").toSeq
     MongoSpark.save(sc.parallelize(docs.map(Document.parse)))
 
     // Create SparkSession
@@ -60,48 +59,10 @@ object SparkSQL extends TourHelper {
     val df = MongoSpark.load(sparkSession)
     df.printSchema()
 
+
     // Characters younger than 100
-    df.filter(df("age") < 100).show()
-
-    // Explicitly declaring a schema
-    MongoSpark.load[SparkSQL.Character](sparkSession).printSchema()
-
-    // Spark SQL
-    val characters = MongoSpark.load[SparkSQL.Character](sparkSession)
-    characters.createOrReplaceTempView("characters")
-
-    val centenarians = sparkSession.sql("SELECT name, age FROM characters WHERE age >= 100")
-    centenarians.show()
-
-    // Save the centenarians
-    MongoSpark.save(centenarians.write.option("collection", "hundredClub"))
-    println("Reading from the 'hundredClub' collection:")
-    MongoSpark.load[SparkSQL.Character](sparkSession, ReadConfig(Map("collection" -> "hundredClub"), Some(ReadConfig(sparkSession)))).show()
-
-    // Drop database
-    MongoConnector(sc).withDatabaseDo(ReadConfig(sc), db => db.drop())
-
-    // Using the SQL helpers and StructFields helpers
-    val objectId = "123400000000000000000000"
-    val newDocs = Seq(new Document("_id", new ObjectId(objectId)).append("a", 1), new Document("_id", new ObjectId()).append("a", 2))
-    MongoSpark.save(sc.parallelize(newDocs))
-
-    // Set the schema using the ObjectId StructFields helper
-    import org.apache.spark.sql.types.DataTypes
-    import com.mongodb.spark.sql.helpers.StructFields
-
-    val schema = DataTypes.createStructType(Array(
-      StructFields.objectId("_id", nullable = false),
-      DataTypes.createStructField("a", DataTypes.IntegerType, false))
-    )
-
-    // Create a dataframe with the helper functions registered
-    val df1 = MongoSpark.read(sparkSession).schema(schema).option("registerSQLHelperFunctions", "true").load()
-
-    // Query using the ObjectId string
-    df1.filter(s"_id = ObjectId('$objectId')").show()
+    val dff = df.filter(df("_id") === UDF.ObjectId("5cfa614103b1094078010fa7"))
+    dff.show()
+    dff.explain()
   }
-  //scalastyle:on method.length
-
-  case class Character(name: String, age: Int)
 }
