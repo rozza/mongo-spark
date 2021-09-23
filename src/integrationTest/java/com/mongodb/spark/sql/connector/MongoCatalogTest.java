@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.mongodb.client.MongoCollection;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
@@ -47,6 +48,8 @@ import org.apache.spark.sql.connector.expressions.Expression;
 import org.apache.spark.sql.connector.expressions.NamedReference;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
+import org.bson.BsonDocument;
+import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -373,7 +376,7 @@ public class MongoCatalogTest extends MongoSparkConnectorTestCase {
             databaseName,
             db -> {
               for (String collectionName : collectionNames) {
-                db.createCollection(collectionName);
+                  db.createCollection(collectionName);
               }
             });
   }
