@@ -51,8 +51,8 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
   private final MongoMicroBatchInputPartition partition;
   private final BsonDocumentToRowConverter bsonDocumentToRowConverter;
   private final ReadConfig readConfig;
+  private final MongoClient mongoClient;
   private boolean closed = false;
-  private MongoClient mongoClient;
   private MongoChangeStreamCursor<BsonDocument> changeStreamCursor;
   private InternalRow currentRow;
 
@@ -72,6 +72,7 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
     this.partition = partition;
     this.bsonDocumentToRowConverter = bsonDocumentToRowConverter;
     this.readConfig = readConfig;
+    this.mongoClient = readConfig.getMongoClient();
     LOGGER.info(
         "Creating partition reader for: PartitionId: {} with Schema: {}",
         partition.getPartitionId(),
@@ -104,16 +105,33 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
   public void close() {
     if (!closed) {
       closed = true;
-      releaseCursor();
+      if (changeStreamCursor != null) {
+        LOGGER.debug("Closing cursor for partitionId: {}", partition.getPartitionId());
+        try {
+          changeStreamCursor.close();
+        } catch (Exception e) {
+          // Ignore
+        } finally {
+          changeStreamCursor = null;
+        }
+      }
+      mongoClient.close();
     }
   }
 
+  /**
+   * The change stream cursor has includes bounds for start and end offsets.
+   *
+   * <p>The time stored in the resumeToken and the clusterTime are equal. `startAtOperationTime` is
+   * used to match the lower bounds. `clusterTime` is used to match the upper bounds.
+   *
+   * <p>If the configured start offset value less than zero it is ignored. Meaning the cursor will
+   * start at the end of the oplog.
+   *
+   * @return the change stream cursor
+   */
   private MongoChangeStreamCursor<BsonDocument> getCursor() {
-    if (mongoClient == null) {
-      mongoClient = readConfig.getMongoClient();
-    }
     if (changeStreamCursor == null) {
-
       List<BsonDocument> pipeline = new ArrayList<>();
       pipeline.add(
           Aggregates.match(Filters.lt("clusterTime", partition.getEndOffsetTimestamp()))
@@ -129,8 +147,11 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
               .getDatabase(readConfig.getDatabaseName())
               .getCollection(readConfig.getCollectionName())
               .watch(pipeline)
-              .fullDocument(readConfig.getStreamFullDocument())
-              .startAtOperationTime(partition.getStartAtOperationTime());
+              .fullDocument(readConfig.getStreamFullDocument());
+
+      if (partition.getStartOffsetTimestamp().getTime() >= 0) {
+        changeStreamIterable.startAtOperationTime(partition.getStartOffsetTimestamp());
+      }
 
       try {
         changeStreamCursor =
@@ -142,21 +163,5 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
       }
     }
     return changeStreamCursor;
-  }
-
-  private void releaseCursor() {
-    if (changeStreamCursor != null) {
-      LOGGER.debug("Closing cursor for partitionId: {}", partition.getPartitionId());
-      try {
-        changeStreamCursor.close();
-      } finally {
-        changeStreamCursor = null;
-        try {
-          mongoClient.close();
-        } finally {
-          mongoClient = null;
-        }
-      }
-    }
   }
 }

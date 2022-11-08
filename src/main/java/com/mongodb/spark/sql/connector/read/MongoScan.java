@@ -23,7 +23,9 @@ import org.apache.spark.sql.connector.read.streaming.ContinuousStream;
 import org.apache.spark.sql.connector.read.streaming.MicroBatchStream;
 import org.apache.spark.sql.types.StructType;
 
+import com.mongodb.spark.sql.connector.assertions.Assertions;
 import com.mongodb.spark.sql.connector.config.ReadConfig;
+import com.mongodb.spark.sql.connector.exceptions.ConfigException;
 
 /** A logical representation of MongoDB data source scan. */
 public class MongoScan implements Scan {
@@ -71,9 +73,15 @@ public class MongoScan implements Scan {
    *
    * <p>Note: Requires MongoDB 4.2+ To support continuing a change stream after a collection has
    * been dropped.
+   *
+   * @param checkpointLocation check point locations are not supported and will throw if not empty
+   * @throws ConfigException if a checkpointLocation is supplied
    */
   @Override
   public MicroBatchStream toMicroBatchStream(final String checkpointLocation) {
+    Assertions.validateConfig(
+        checkpointLocation::isEmpty,
+        () -> "The MongoDB micro batch streams do not support checkpointLocations.");
     return new MongoMicroBatchStream(schema, readConfig);
   }
 
@@ -85,9 +93,16 @@ public class MongoScan implements Scan {
    *
    * <p>Note: Requires MongoDB 4.2+ To support continuing a change stream after a collection has
    * been dropped.
+   *
+   * @param checkpointLocation check point locations are not supported and will throw if not empty
+   * @throws ConfigException if a checkpointLocation is supplied
    */
   @Override
   public ContinuousStream toContinuousStream(final String checkpointLocation) {
+    Assertions.validateConfig(
+        checkpointLocation,
+        String::isEmpty,
+        () -> "The MongoDB continuous streams do not support checkpointLocations.");
     return new MongoContinuousStream(schema, readConfig);
   }
 }

@@ -277,6 +277,26 @@ abstract class AbstractMongoStreamTest extends MongoSparkConnectorTestCase {
     assertTrue(cause instanceof ConfigException, format("Expected ConfigException: %s", cause));
   }
 
+  @Test
+  void testStreamWithCheckpointLocation() {
+    SparkSession spark = getOrCreateSparkSession();
+    assertThrows(
+        ConfigException.class,
+        () ->
+            spark
+                .readStream()
+                .format("mongodb")
+                .schema(DEFAULT_SCHEMA)
+                .option("checkpointLocation", "/tmp/checkpoint")
+                .load()
+                .writeStream()
+                .trigger(getTrigger())
+                .format("memory")
+                .queryName("test")
+                .outputMode("append")
+                .start());
+  }
+
   private static final StructType DEFAULT_SCHEMA =
       createStructType(
           asList(
