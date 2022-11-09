@@ -18,7 +18,7 @@ package com.mongodb.spark.sql.connector.read;
 
 import org.apache.spark.sql.streaming.Trigger;
 
-public class MongoMicroBatchStreamTest extends AbstractMongoStreamTest {
+public class MongoMicroBatchStreamTest extends AbstractMongoReadStreamTest {
 
   @Override
   String collectionPrefix() {
@@ -27,6 +27,6 @@ public class MongoMicroBatchStreamTest extends AbstractMongoStreamTest {
 
   @Override
   Trigger getTrigger() {
-    return Trigger.ProcessingTime("10 seconds");
+    return Trigger.ProcessingTime("11 seconds");
   }
 }

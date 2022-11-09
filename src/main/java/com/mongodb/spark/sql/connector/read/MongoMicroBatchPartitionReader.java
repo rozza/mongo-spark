@@ -17,6 +17,8 @@
 
 package com.mongodb.spark.sql.connector.read;
 
+import static com.mongodb.spark.sql.connector.read.ResumeTokenHelper.getTimestampFromResumeToken;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,7 +54,7 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
   private final BsonDocumentToRowConverter bsonDocumentToRowConverter;
   private final ReadConfig readConfig;
   private final MongoClient mongoClient;
-  private boolean closed = false;
+  private volatile boolean closed = false;
   private MongoChangeStreamCursor<BsonDocument> changeStreamCursor;
   private InternalRow currentRow;
 
@@ -79,19 +81,42 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
         bsonDocumentToRowConverter.getSchema());
   }
 
-  /** Proceed to next record, returns false if there is no more records. */
+  /**
+   * Proceed to next record, returns false if there is no more records.
+   *
+   * <p>Enter a busy loop until one of the following scenarios exits the loop:
+   *
+   * <ul>
+   *   <li>There is a result returned from {@code cursor.tryNext()}.
+   *   <li>The cursor is closed. Happens when the collection is dropped.
+   *   <li>The postBatchResumeToken's timestamp from the change stream is after the
+   *       endOffsetTimestamp. Indicating that newer events are in the oplog but none within this
+   *       time period for this collection.
+   * </ul>
+   */
   @Override
   public boolean next() {
     Assertions.ensureState(() -> !closed, () -> "Cannot call next() on a closed PartitionReader.");
+
     MongoChangeStreamCursor<BsonDocument> cursor = getCursor();
-    BsonDocument next = cursor.tryNext();
-    if (next != null) {
+    BsonDocument cursorNext;
+
+    do {
+      cursorNext = cursor.tryNext();
+    } while (cursorNext == null
+        && cursor.getServerCursor() != null
+        && getTimestampFromResumeToken(cursor.getResumeToken())
+                .compareTo(partition.getEndOffsetTimestamp())
+            <= 0);
+
+    boolean hasNext = cursorNext != null;
+    if (hasNext) {
       if (readConfig.streamPublishFullDocumentOnly()) {
-        next = next.getDocument(FULL_DOCUMENT, new BsonDocument());
+        cursorNext = cursorNext.getDocument(FULL_DOCUMENT, new BsonDocument());
       }
-      currentRow = bsonDocumentToRowConverter.toInternalRow(next);
+      currentRow = bsonDocumentToRowConverter.toInternalRow(cursorNext);
     }
-    return next != null;
+    return hasNext;
   }
 
   /** Return the current record. This method should return same value until `next` is called. */
@@ -136,7 +161,6 @@ public class MongoMicroBatchPartitionReader implements PartitionReader<InternalR
       pipeline.add(
           Aggregates.match(Filters.lt("clusterTime", partition.getEndOffsetTimestamp()))
               .toBsonDocument());
-
       if (readConfig.streamPublishFullDocumentOnly()) {
         pipeline.add(Aggregates.match(Filters.exists(FULL_DOCUMENT)).toBsonDocument());
       }

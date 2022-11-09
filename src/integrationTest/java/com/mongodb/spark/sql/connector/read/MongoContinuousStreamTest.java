@@ -18,7 +18,7 @@ package com.mongodb.spark.sql.connector.read;
 
 import org.apache.spark.sql.streaming.Trigger;
 
-public class MongoContinuousStreamTest extends AbstractMongoStreamTest {
+public class MongoContinuousStreamTest extends AbstractMongoReadStreamTest {
   @Override
   String collectionPrefix() {
     return "continuous";

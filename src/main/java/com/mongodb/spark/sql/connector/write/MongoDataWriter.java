@@ -87,6 +87,7 @@ class MongoDataWriter implements DataWriter<InternalRow> {
    */
   @Override
   public void write(final InternalRow record) {
+    LOGGER.info("Staging a write");
     BsonDocument bsonDocument = rowToBsonDocumentConverter.fromRow(record);
     writeModelList.add(getWriteModel(bsonDocument));
     if (writeModelList.size() >= writeConfig.getMaxBatchSize()) {

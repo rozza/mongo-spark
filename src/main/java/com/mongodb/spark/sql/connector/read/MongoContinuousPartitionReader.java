@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 
 import com.mongodb.MongoException;
@@ -175,6 +176,8 @@ final class MongoContinuousPartitionReader implements ContinuousPartitionReader<
 
       if (!lastOffset.getResumeToken().isEmpty()) {
         changeStreamIterable = changeStreamIterable.startAfter(lastOffset.getResumeToken());
+      } else {
+        changeStreamIterable = changeStreamIterable.startAtOperationTime(new BsonTimestamp(0));
       }
 
       try {
