@@ -18,6 +18,7 @@
 package com.mongodb.spark.sql.connector.schema;
 
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -27,17 +28,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonBinaryDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonDbPointerDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptWithScopeDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMaxKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMinKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonObjectIdDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonRegularExpressionDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonSymbolDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonTimestampDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonUndefinedDataType;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.ArrayType;
@@ -49,10 +39,6 @@ import org.apache.spark.sql.types.MapType;
 import org.apache.spark.sql.types.StringType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-import org.bson.BsonMaxKey;
-import org.bson.BsonMinKey;
-import org.bson.BsonType;
-import org.bson.BsonUndefined;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
 
@@ -72,6 +58,17 @@ import org.bson.types.Decimal128;
 import com.mongodb.spark.sql.connector.exceptions.ConfigException;
 import com.mongodb.spark.sql.connector.exceptions.DataException;
 import com.mongodb.spark.sql.connector.interop.JavaScala;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonBinaryDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonDbPointerDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptWithScopeDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonMaxKeyDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonMinKeyDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonObjectIdDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonRegularExpressionDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonSymbolDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonTimestampDataType;
+import com.mongodb.spark.sql.connector.schema.compatibility.BsonUndefinedDataType;
 
 /**
  * The helper for conversion of GenericRowWithSchema instances to BsonDocuments.
@@ -177,6 +174,8 @@ public final class RowToBsonDocumentConverter implements Serializable {
         List<Object> listData;
         if (data instanceof List) {
           listData = (List<Object>) data;
+        } else if (data instanceof Object[]) {
+          listData = asList((Object[]) data);
         } else {
           listData = JavaScala.asJava((scala.collection.Seq<Object>) data);
         }
@@ -198,20 +197,25 @@ public final class RowToBsonDocumentConverter implements Serializable {
         }
         mapData.forEach((k, v) -> bsonDocument.put(k, toBsonValue(valueType, v)));
         return bsonDocument;
-      } else if (isBsonDataType(dataType)) {
-          //
       } else if (dataType instanceof StructType) {
         Row row = (Row) data;
-        BsonDocument bsonDocument = new BsonDocument();
-        for (StructField field : row.schema().fields()) {
-          int fieldIndex = row.fieldIndex(field.name());
-          if (!(field.nullable() && row.isNullAt(fieldIndex))) {
-            bsonDocument.append(field.name(), toBsonValue(field.dataType(), row.get(fieldIndex)));
-          }
-        }
-        return bsonDocument;
+        return fromBsonDataType(dataType, row)
+            .orElseGet(
+                () -> {
+                  System.out.println("OK");
+                  BsonDocument bsonDocument = new BsonDocument();
+                  for (StructField field : row.schema().fields()) {
+                    int fieldIndex = row.fieldIndex(field.name());
+                    if (!(field.nullable() && row.isNullAt(fieldIndex))) {
+                      bsonDocument.append(
+                          field.name(), toBsonValue(field.dataType(), row.get(fieldIndex)));
+                    }
+                  }
+                  return bsonDocument;
+                });
       }
     } catch (Exception e) {
+      e.printStackTrace();
       throw new DataException(
           format(
               "Cannot cast %s into a BsonValue. %s has no matching BsonValue. Error: %s",
@@ -222,31 +226,34 @@ public final class RowToBsonDocumentConverter implements Serializable {
         format("Cannot cast %s into a BsonValue. %s has no matching BsonValue.", data, dataType));
   }
 
-  Optional<BsonValue> isBsonDataType(final DataType dataType, final Row row) {
-      if (BsonBinaryDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonBinaryDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonDbPointerDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonDbPointerDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonJavaScriptDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonJavaScriptDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonJavaScriptWithScopeDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonJavaScriptWithScopeDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonMaxKeyDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonMaxKeyDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonMinKeyDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonMinKeyDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonObjectIdDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonObjectIdDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonRegularExpressionDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonRegularExpressionDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonSymbolDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonSymbolDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonTimestampDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonTimestampDataType.DATA_TYPE.fromSparkData(row));
-      } else if (BsonUndefinedDataType.DATA_TYPE.sameType(dataType)) {
-          return Optional.of(BsonUndefinedDataType.DATA_TYPE.fromSparkData(row));
-      }
+  static Optional<BsonValue> fromBsonDataType(final DataType dataType, final Row row) {
+    System.out.println(dataType + " :: " + row);
+    System.out.println(" >> " + BsonBinaryDataType.DATA_TYPE.sameType(dataType));
 
-      return Optional.empty();
+    if (BsonBinaryDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonBinaryDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonDbPointerDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonDbPointerDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonJavaScriptDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonJavaScriptDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonJavaScriptWithScopeDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonJavaScriptWithScopeDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonMaxKeyDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonMaxKeyDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonMinKeyDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonMinKeyDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonObjectIdDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonObjectIdDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonRegularExpressionDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonRegularExpressionDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonSymbolDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonSymbolDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonTimestampDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonTimestampDataType.DATA_TYPE.fromSparkData(row));
+    } else if (BsonUndefinedDataType.DATA_TYPE.sameType(dataType)) {
+      return Optional.of(BsonUndefinedDataType.DATA_TYPE.fromSparkData(row));
+    }
+
+    return Optional.empty();
   }
 }

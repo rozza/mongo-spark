@@ -17,35 +17,41 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonBinary;
+import static java.util.Arrays.asList;
 
 import java.util.List;
 
-import static java.util.Arrays.asList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonBinary;
 
 public class BsonBinaryDataType extends BsonDataType<BsonBinary> {
 
-    public static final BsonBinaryDataType DATA_TYPE = new BsonBinaryDataType();
+  public static final BsonBinaryDataType DATA_TYPE = new BsonBinaryDataType();
 
-    @Override
-    public List<Object> getData(final BsonBinary bsonValue) {
-        return asList(bsonValue.getType(), bsonValue.getData());
-    }
+  @Override
+  public List<Object> getData(final BsonBinary bsonValue) {
+    return asList(bsonValue.getType(), bsonValue.getData());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return asList(
-                DataTypes.createStructField("subType", DataTypes.ByteType, true),
-                DataTypes.createStructField("data", DataTypes.BinaryType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return asList(
+        DataTypes.createStructField("subType", DataTypes.ByteType, true),
+        DataTypes.createStructField("data", DataTypes.BinaryType, true));
+  }
 
-    @Override
-    public BsonBinary fromSparkData(final Row row) {
-        return new BsonBinary(row.getByte(0), row.getAs(1));
-    }
+  @Override
+  public BsonBinary fromSparkData(final Row row) {
+    return new BsonBinary(row.getByte(0), row.getAs(1));
+  }
 
-    private BsonBinaryDataType(){}
+  @Override
+  public String toString() {
+    return "BsonBinaryDataType";
+  }
+
+  private BsonBinaryDataType() {}
 }

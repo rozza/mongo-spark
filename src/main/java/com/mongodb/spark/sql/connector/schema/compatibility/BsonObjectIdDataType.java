@@ -17,34 +17,35 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonObjectId;
-import org.bson.types.ObjectId;
+import static java.util.Collections.singletonList;
 
 import java.util.List;
 
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonObjectId;
+import org.bson.types.ObjectId;
 
 public class BsonObjectIdDataType extends BsonDataType<BsonObjectId> {
 
-    public static final BsonObjectIdDataType DATA_TYPE = new BsonObjectIdDataType();
+  public static final BsonObjectIdDataType DATA_TYPE = new BsonObjectIdDataType();
 
-    @Override
-    public List<Object> getData(final BsonObjectId bsonValue) {
-        return singletonList(bsonValue.getValue().toHexString());
-    }
+  @Override
+  public List<Object> getData(final BsonObjectId bsonValue) {
+    return singletonList(bsonValue.getValue().toHexString());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return singletonList(DataTypes.createStructField("oid", DataTypes.StringType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return singletonList(DataTypes.createStructField("oid", DataTypes.StringType, true));
+  }
 
-    @Override
-    public BsonObjectId fromSparkData(final Row row) {
-        return  new BsonObjectId(new ObjectId(row.getString(0)));
-    }
+  @Override
+  public BsonObjectId fromSparkData(final Row row) {
+    return new BsonObjectId(new ObjectId(row.getString(0)));
+  }
 
-    private BsonObjectIdDataType(){}
+  private BsonObjectIdDataType() {}
 }

@@ -17,33 +17,34 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonMaxKey;
+import static java.util.Collections.singletonList;
 
 import java.util.List;
 
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonMaxKey;
 
 public class BsonMaxKeyDataType extends BsonDataType<BsonMaxKey> {
 
-    public static final BsonMaxKeyDataType DATA_TYPE = new BsonMaxKeyDataType();
+  public static final BsonMaxKeyDataType DATA_TYPE = new BsonMaxKeyDataType();
 
-    @Override
-    public List<Object> getData(final BsonMaxKey bsonValue) {
-        return singletonList(1);
-    }
+  @Override
+  public List<Object> getData(final BsonMaxKey bsonValue) {
+    return singletonList(1);
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return singletonList(DataTypes.createStructField("maxKey", DataTypes.IntegerType, false));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return singletonList(DataTypes.createStructField("maxKey", DataTypes.IntegerType, false));
+  }
 
-    @Override
-    public BsonMaxKey fromSparkData(final Row row) {
-        return new BsonMaxKey();
-    }
+  @Override
+  public BsonMaxKey fromSparkData(final Row row) {
+    return new BsonMaxKey();
+  }
 
-    private BsonMaxKeyDataType(){}
+  private BsonMaxKeyDataType() {}
 }

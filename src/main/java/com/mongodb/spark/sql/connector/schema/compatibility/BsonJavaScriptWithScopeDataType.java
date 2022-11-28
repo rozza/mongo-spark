@@ -17,37 +17,38 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonDocument;
-import org.bson.BsonJavaScript;
-import org.bson.BsonJavaScriptWithScope;
+import static java.util.Arrays.asList;
 
 import java.util.List;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonDocument;
+import org.bson.BsonJavaScriptWithScope;
 
 public class BsonJavaScriptWithScopeDataType extends BsonDataType<BsonJavaScriptWithScope> {
 
-    public static final BsonJavaScriptWithScopeDataType DATA_TYPE = new BsonJavaScriptWithScopeDataType();
+  public static final BsonJavaScriptWithScopeDataType DATA_TYPE =
+      new BsonJavaScriptWithScopeDataType();
 
-    @Override
-    public List<Object> getData(final BsonJavaScriptWithScope bsonValue) {
-        return asList(bsonValue.getCode(), bsonValue.getScope().toJson());
-    }
+  @Override
+  public List<Object> getData(final BsonJavaScriptWithScope bsonValue) {
+    return asList(bsonValue.getCode(), bsonValue.getScope().toJson());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return asList(      DataTypes.createStructField("code", DataTypes.StringType, true),
-                DataTypes.createStructField("scope", DataTypes.StringType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return asList(
+        DataTypes.createStructField("code", DataTypes.StringType, true),
+        DataTypes.createStructField("scope", DataTypes.StringType, true));
+  }
 
-    @Override
-    public BsonJavaScriptWithScope fromSparkData(final Row row) {
-        return new BsonJavaScriptWithScope(row.getString(0), BsonDocument.parse(row.getString(1)));
-    }
+  @Override
+  public BsonJavaScriptWithScope fromSparkData(final Row row) {
+    return new BsonJavaScriptWithScope(row.getString(0), BsonDocument.parse(row.getString(1)));
+  }
 
-    private BsonJavaScriptWithScopeDataType(){}
+  private BsonJavaScriptWithScopeDataType() {}
 }

@@ -17,37 +17,36 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonRegularExpression;
-import org.bson.types.ObjectId;
+import static java.util.Arrays.asList;
 
 import java.util.List;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonRegularExpression;
 
 public class BsonRegularExpressionDataType extends BsonDataType<BsonRegularExpression> {
 
-    public static final BsonRegularExpressionDataType DATA_TYPE = new BsonRegularExpressionDataType();
+  public static final BsonRegularExpressionDataType DATA_TYPE = new BsonRegularExpressionDataType();
 
-    @Override
-    public List<Object> getData(final BsonRegularExpression bsonValue) {
-        return asList(bsonValue.getPattern(), bsonValue.getOptions());
-    }
+  @Override
+  public List<Object> getData(final BsonRegularExpression bsonValue) {
+    return asList(bsonValue.getPattern(), bsonValue.getOptions());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return asList(
-                DataTypes.createStructField("regex", DataTypes.StringType, true),
-                DataTypes.createStructField("options", DataTypes.StringType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return asList(
+        DataTypes.createStructField("regex", DataTypes.StringType, true),
+        DataTypes.createStructField("options", DataTypes.StringType, true));
+  }
 
-    @Override
-    public BsonRegularExpression fromSparkData(final Row row) {
-        return new BsonRegularExpression(row.getString(0), row.getString(1));
-    }
+  @Override
+  public BsonRegularExpression fromSparkData(final Row row) {
+    return new BsonRegularExpression(row.getString(0), row.getString(1));
+  }
 
-    private BsonRegularExpressionDataType(){}
+  private BsonRegularExpressionDataType() {}
 }

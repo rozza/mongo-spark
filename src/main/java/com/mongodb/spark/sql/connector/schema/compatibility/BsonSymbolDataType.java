@@ -17,34 +17,34 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonSymbol;
-import org.bson.types.ObjectId;
+import static java.util.Collections.singletonList;
 
 import java.util.List;
 
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonSymbol;
 
 public class BsonSymbolDataType extends BsonDataType<BsonSymbol> {
 
-    public static final BsonSymbolDataType DATA_TYPE = new BsonSymbolDataType();
+  public static final BsonSymbolDataType DATA_TYPE = new BsonSymbolDataType();
 
-    @Override
-    public List<Object> getData(final BsonSymbol bsonValue) {
-        return singletonList(bsonValue.getSymbol());
-    }
+  @Override
+  public List<Object> getData(final BsonSymbol bsonValue) {
+    return singletonList(bsonValue.getSymbol());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return singletonList(DataTypes.createStructField("symbol", DataTypes.StringType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return singletonList(DataTypes.createStructField("symbol", DataTypes.StringType, true));
+  }
 
-    @Override
-    public BsonSymbol fromSparkData(final Row row) {
-        return  new BsonSymbol(row.getString(0));
-    }
+  @Override
+  public BsonSymbol fromSparkData(final Row row) {
+    return new BsonSymbol(row.getString(0));
+  }
 
-    private BsonSymbolDataType(){}
+  private BsonSymbolDataType() {}
 }

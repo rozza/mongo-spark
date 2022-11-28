@@ -58,6 +58,12 @@ public class RowToBsonDocumentConverterTest extends SchemaTest {
   }
 
   @Test
+  @DisplayName("test all bson types")
+  void testAllBsonTypes() {
+    assertEquals(BSON_DOCUMENT_ALL_TYPES, CONVERTER.fromRow(ALL_TYPES_EXTENDED_ROW));
+  }
+
+  @Test
   @DisplayName("test decimal types")
   void testDecimalTypes() {
     BigDecimal bigDecimal = BigDecimal.valueOf(123456.789);

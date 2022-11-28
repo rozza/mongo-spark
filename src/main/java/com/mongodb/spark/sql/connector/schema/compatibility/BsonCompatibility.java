@@ -17,23 +17,29 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
+import java.util.List;
+
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
-import org.bson.BsonValue;
+import org.apache.spark.sql.types.StructType;
 
-import java.util.List;
+import org.bson.BsonValue;
 
 interface BsonCompatibility<T extends BsonValue> {
 
-    List<Object> getData(T bsonValue);
-    List<StructField> getFieldList();
+  List<Object> getData(T bsonValue);
 
-    default Row toSparkData(T bsonValue) {
-        return new GenericRowWithSchema(getData(bsonValue).toArray(), DataTypes.createStructType(getFieldList()));
-    }
+  List<StructField> getFieldList();
 
-    T fromSparkData(Row row);
+  T fromSparkData(Row row);
 
+  default StructType getSchema() {
+    return DataTypes.createStructType(getFieldList());
+  }
+
+  default GenericRowWithSchema toSparkData(T bsonValue) {
+    return new GenericRowWithSchema(getData(bsonValue).toArray(), getSchema());
+  }
 }

@@ -17,33 +17,34 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonUndefined;
+import static java.util.Collections.singletonList;
 
 import java.util.List;
 
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonUndefined;
 
 public class BsonUndefinedDataType extends BsonDataType<BsonUndefined> {
 
-    public static final BsonUndefinedDataType DATA_TYPE = new BsonUndefinedDataType();
+  public static final BsonUndefinedDataType DATA_TYPE = new BsonUndefinedDataType();
 
-    @Override
-    public List<Object> getData(final BsonUndefined bsonValue) {
-        return singletonList(true);
-    }
+  @Override
+  public List<Object> getData(final BsonUndefined bsonValue) {
+    return singletonList(true);
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return singletonList(DataTypes.createStructField("undefined", DataTypes.BooleanType, false));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return singletonList(DataTypes.createStructField("undefined", DataTypes.BooleanType, false));
+  }
 
-    @Override
-    public BsonUndefined fromSparkData(final Row row) {
-        return new BsonUndefined();
-    }
+  @Override
+  public BsonUndefined fromSparkData(final Row row) {
+    return new BsonUndefined();
+  }
 
-    private BsonUndefinedDataType(){}
+  private BsonUndefinedDataType() {}
 }

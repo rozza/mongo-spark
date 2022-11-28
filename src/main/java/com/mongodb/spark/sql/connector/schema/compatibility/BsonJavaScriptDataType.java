@@ -17,35 +17,34 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
+import static java.util.Collections.singletonList;
+
+import java.util.List;
+
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
+
 import org.bson.BsonJavaScript;
-
-import java.util.Collections;
-import java.util.List;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 public class BsonJavaScriptDataType extends BsonDataType<BsonJavaScript> {
 
-    public static final BsonJavaScriptDataType DATA_TYPE = new BsonJavaScriptDataType();
+  public static final BsonJavaScriptDataType DATA_TYPE = new BsonJavaScriptDataType();
 
-    @Override
-    public List<Object> getData(final BsonJavaScript bsonValue) {
-        return singletonList(bsonValue.getCode());
-    }
+  @Override
+  public List<Object> getData(final BsonJavaScript bsonValue) {
+    return singletonList(bsonValue.getCode());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return singletonList(DataTypes.createStructField("code", DataTypes.StringType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return singletonList(DataTypes.createStructField("code", DataTypes.StringType, true));
+  }
 
-    @Override
-    public BsonJavaScript fromSparkData(final Row row) {
-        return new BsonJavaScript(row.getString(0));
-    }
+  @Override
+  public BsonJavaScript fromSparkData(final Row row) {
+    return new BsonJavaScript(row.getString(0));
+  }
 
-    private BsonJavaScriptDataType(){}
+  private BsonJavaScriptDataType() {}
 }

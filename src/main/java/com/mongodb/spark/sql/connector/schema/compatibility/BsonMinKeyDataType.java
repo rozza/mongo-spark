@@ -17,33 +17,34 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonMinKey;
+import static java.util.Collections.singletonList;
 
 import java.util.List;
 
-import static java.util.Collections.singletonList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonMinKey;
 
 public class BsonMinKeyDataType extends BsonDataType<BsonMinKey> {
 
-    public static final BsonMinKeyDataType DATA_TYPE = new BsonMinKeyDataType();
+  public static final BsonMinKeyDataType DATA_TYPE = new BsonMinKeyDataType();
 
-    @Override
-    public List<Object> getData(final BsonMinKey bsonValue) {
-        return singletonList(1);
-    }
+  @Override
+  public List<Object> getData(final BsonMinKey bsonValue) {
+    return singletonList(1);
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return singletonList(DataTypes.createStructField("minKey", DataTypes.IntegerType, false));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return singletonList(DataTypes.createStructField("minKey", DataTypes.IntegerType, false));
+  }
 
-    @Override
-    public BsonMinKey fromSparkData(final Row row) {
-        return new BsonMinKey();
-    }
+  @Override
+  public BsonMinKey fromSparkData(final Row row) {
+    return new BsonMinKey();
+  }
 
-    private BsonMinKeyDataType(){}
+  private BsonMinKeyDataType() {}
 }

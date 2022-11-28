@@ -17,36 +17,36 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonTimestamp;
-import org.bson.BsonTimestamp;
+import static java.util.Arrays.asList;
 
 import java.util.List;
 
-import static java.util.Arrays.asList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonTimestamp;
 
 public class BsonTimestampDataType extends BsonDataType<BsonTimestamp> {
 
-    public static final BsonTimestampDataType DATA_TYPE = new BsonTimestampDataType();
+  public static final BsonTimestampDataType DATA_TYPE = new BsonTimestampDataType();
 
-    @Override
-    public List<Object> getData(final BsonTimestamp bsonValue) {
-        return asList(bsonValue.getTime(), bsonValue.getInc());
-    }
+  @Override
+  public List<Object> getData(final BsonTimestamp bsonValue) {
+    return asList(bsonValue.getTime(), bsonValue.getInc());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return asList(
-                DataTypes.createStructField("time", DataTypes.IntegerType, true),
-                DataTypes.createStructField("inc", DataTypes.IntegerType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return asList(
+        DataTypes.createStructField("time", DataTypes.IntegerType, true),
+        DataTypes.createStructField("inc", DataTypes.IntegerType, true));
+  }
 
-    @Override
-    public BsonTimestamp fromSparkData(final Row row) {
-        return new BsonTimestamp(row.getInt(0), row.getInt(1));
-    }
+  @Override
+  public BsonTimestamp fromSparkData(final Row row) {
+    return new BsonTimestamp(row.getInt(0), row.getInt(1));
+  }
 
-    private BsonTimestampDataType(){}
+  private BsonTimestampDataType() {}
 }

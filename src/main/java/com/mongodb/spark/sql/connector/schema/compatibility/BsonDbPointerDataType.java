@@ -17,36 +17,37 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.bson.BsonDbPointer;
-import org.bson.types.ObjectId;
+import static java.util.Arrays.asList;
 
 import java.util.List;
 
-import static java.util.Arrays.asList;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+
+import org.bson.BsonDbPointer;
+import org.bson.types.ObjectId;
 
 public class BsonDbPointerDataType extends BsonDataType<BsonDbPointer> {
 
-    public static final BsonDbPointerDataType DATA_TYPE = new BsonDbPointerDataType();
+  public static final BsonDbPointerDataType DATA_TYPE = new BsonDbPointerDataType();
 
-    @Override
-    public List<Object> getData(final BsonDbPointer bsonValue) {
-        return asList(bsonValue.getNamespace(), bsonValue.getId().toHexString());
-    }
+  @Override
+  public List<Object> getData(final BsonDbPointer bsonValue) {
+    return asList(bsonValue.getNamespace(), bsonValue.getId().toHexString());
+  }
 
-    @Override
-    public List<StructField> getFieldList() {
-        return asList(
-                DataTypes.createStructField("ref", DataTypes.StringType, true),
-                DataTypes.createStructField("oid", DataTypes.StringType, true));
-    }
+  @Override
+  public List<StructField> getFieldList() {
+    return asList(
+        DataTypes.createStructField("ref", DataTypes.StringType, true),
+        DataTypes.createStructField("oid", DataTypes.StringType, true));
+  }
 
-    @Override
-    public BsonDbPointer fromSparkData(final Row row) {
-        return new BsonDbPointer(row.getString(0), new ObjectId(row.getString(1)));
-    }
+  @Override
+  public BsonDbPointer fromSparkData(final Row row) {
+    return new BsonDbPointer(row.getString(0), new ObjectId(row.getString(1)));
+  }
 
-    private BsonDbPointerDataType(){}
+  private BsonDbPointerDataType() {}
 }

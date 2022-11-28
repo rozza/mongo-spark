@@ -525,6 +525,17 @@ public class BsonDocumentToRowConverterTest extends SchemaTest {
   }
 
   @Test
+  @DisplayName("test fromBsonDocument extended")
+  void testFromBsonDocumentExtended() {
+    BsonDocumentToRowConverter bsonDocumentToRowConverter =
+        new BsonDocumentToRowConverter(ALL_TYPES_EXTENDED_ROW.schema());
+
+    GenericRowWithSchema actual =
+        bsonDocumentToRowConverter.toRow(BSON_DOCUMENT_ALL_EXTENDED_TYPES);
+    assertRows(ALL_TYPES_EXTENDED_ROW, actual);
+  }
+
+  @Test
   @DisplayName("test unsupported types")
   void testUnsupportedTypes() {
     assertThrows(
@@ -536,10 +547,9 @@ public class BsonDocumentToRowConverterTest extends SchemaTest {
 
   private void assertRows(final GenericRowWithSchema expected, final GenericRowWithSchema actual) {
     assertEquals(expected.schema(), actual.schema());
-
-    for (int i = 0; i < expected.values().length; i++) {
-      Object expectedValue = expected.values()[i];
-      Object actualValue = actual.values()[i];
+    for (String fieldName : expected.schema().fieldNames()) {
+      Object expectedValue = expected.values()[expected.schema().fieldIndex(fieldName)];
+      Object actualValue = actual.values()[actual.schema().fieldIndex(fieldName)];
       assertRowValues(expectedValue, actualValue);
     }
   }

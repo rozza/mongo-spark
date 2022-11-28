@@ -17,21 +17,40 @@
 
 package com.mongodb.spark.sql.connector.schema.compatibility;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
+
 import org.bson.BsonValue;
 
-public abstract class BsonDataType<T extends BsonValue> extends DataType implements BsonCompatibility<T> {
-    BsonDataType() {
-    }
+public abstract class BsonDataType<T extends BsonValue> extends DataType
+    implements BsonCompatibility<T> {
+  BsonDataType() {}
 
-    @Override
-    public int defaultSize() {
-        return getFieldList().stream().map(f ->
-                f.dataType().defaultSize()).mapToInt(i -> i).sum();
-    }
+  @Override
+  public int defaultSize() {
+    return getFieldList().stream().map(f -> f.dataType().defaultSize()).mapToInt(i -> i).sum();
+  }
 
-    @Override
-    public DataType asNullable() {
-        return this;
-    }
+  @Override
+  public DataType asNullable() {
+    return this;
+  }
+
+  public boolean isSameType(final StructType dataType) {
+    List<StructField> fieldList = getFieldList();
+
+    return dataType.fields().length == fieldList.size()
+        && Arrays.stream(dataType.fieldNames())
+            .collect(Collectors.toSet())
+            .equals(fieldList.stream().map(StructField::name).collect(Collectors.toSet()))
+        && Arrays.stream(dataType.fields())
+            .map(StructField::dataType)
+            .collect(Collectors.toSet())
+            .equals(fieldList.stream().map(StructField::dataType).collect(Collectors.toSet()));
+  }
 }
