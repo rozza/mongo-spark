@@ -525,17 +525,6 @@ public class BsonDocumentToRowConverterTest extends SchemaTest {
   }
 
   @Test
-  @DisplayName("test fromBsonDocument extended")
-  void testFromBsonDocumentExtended() {
-    BsonDocumentToRowConverter bsonDocumentToRowConverter =
-        new BsonDocumentToRowConverter(ALL_TYPES_EXTENDED_ROW.schema());
-
-    GenericRowWithSchema actual =
-        bsonDocumentToRowConverter.toRow(BSON_DOCUMENT_ALL_EXTENDED_TYPES);
-    assertRows(ALL_TYPES_EXTENDED_ROW, actual);
-  }
-
-  @Test
   @DisplayName("test unsupported types")
   void testUnsupportedTypes() {
     assertThrows(

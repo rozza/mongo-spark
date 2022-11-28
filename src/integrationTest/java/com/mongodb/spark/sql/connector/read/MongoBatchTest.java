@@ -123,7 +123,7 @@ class MongoBatchTest extends MongoSparkConnectorTestCase {
 
     assertEquals(
         BsonDocument.parse(EXPECTED_BSON_DOCUMENT_JSON),
-        new RowToBsonDocumentConverter(actual.schema()).fromRow(actual));
+        new RowToBsonDocumentConverter(actual.schema(), true).fromRow(actual));
   }
 
   @Test
@@ -138,31 +138,31 @@ class MongoBatchTest extends MongoSparkConnectorTestCase {
     Row actual = dataset.where("_id = 1").first();
     assertEquals(
         BsonDocument.parse(EXPECTED_BSON_DOCUMENT_JSON),
-        new RowToBsonDocumentConverter(actual.schema()).fromRow(actual));
+        new RowToBsonDocumentConverter(actual.schema(), true).fromRow(actual));
 
     // Casted types
     actual = dataset.where("dateTime = cast('2020-01-01T00:00:01.000Z' as timestamp)").first();
     assertEquals(
         BsonDocument.parse(EXPECTED_BSON_DOCUMENT_JSON),
-        new RowToBsonDocumentConverter(actual.schema()).fromRow(actual));
+        new RowToBsonDocumentConverter(actual.schema(), true).fromRow(actual));
 
     // Find complex matches
     actual = dataset.where("arraySimple = array(1, 2, 3)").first();
     assertEquals(
         BsonDocument.parse(EXPECTED_BSON_DOCUMENT_JSON),
-        new RowToBsonDocumentConverter(actual.schema()).fromRow(actual));
+        new RowToBsonDocumentConverter(actual.schema(), true).fromRow(actual));
 
     // Find nested matches
     actual = dataset.where("document.a = 1").first();
     assertEquals(
         BsonDocument.parse(EXPECTED_BSON_DOCUMENT_JSON),
-        new RowToBsonDocumentConverter(actual.schema()).fromRow(actual));
+        new RowToBsonDocumentConverter(actual.schema(), true).fromRow(actual));
 
     // Functional filters - handled by spark
     actual = dataset.filter("array_contains(arraySimple, 2)").first();
     assertEquals(
         BsonDocument.parse(EXPECTED_BSON_DOCUMENT_JSON),
-        new RowToBsonDocumentConverter(actual.schema()).fromRow(actual));
+        new RowToBsonDocumentConverter(actual.schema(), true).fromRow(actual));
   }
 
   @Test

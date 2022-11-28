@@ -60,7 +60,7 @@ public class RowToBsonDocumentConverterTest extends SchemaTest {
   @Test
   @DisplayName("test all bson types")
   void testAllBsonTypes() {
-    assertEquals(BSON_DOCUMENT_ALL_TYPES, CONVERTER.fromRow(ALL_TYPES_EXTENDED_ROW));
+    assertEquals(BSON_DOCUMENT_ALL_TYPES, CONVERTER.fromRow(ALL_TYPES_ROW));
   }
 
   @Test

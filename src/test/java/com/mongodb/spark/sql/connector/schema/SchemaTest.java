@@ -34,20 +34,8 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 
-import org.bson.BsonBinary;
 import org.bson.BsonDocument;
 import org.bson.RawBsonDocument;
-
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonBinaryDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptWithScopeDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMaxKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMinKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonObjectIdDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonRegularExpressionDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonSymbolDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonTimestampDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonUndefinedDataType;
 
 abstract class SchemaTest {
 
@@ -150,11 +138,12 @@ abstract class SchemaTest {
   static final BsonDocument BSON_DOCUMENT_ALL_TYPES =
       RawBsonDocument.parse(BSON_DOCUMENT_ALL_TYPES_JSON);
 
-  static final BsonDocument BSON_DOCUMENT_ALL_EXTENDED_TYPES =
-      BsonDocument.parse(BSON_DOCUMENT_ALL_TYPES_JSON)
-          .append(
-              "binary",
-              new BsonBinary((byte) 0x80, BSON_DOCUMENT_ALL_TYPES.getBinary("binary").getData()));
+  static final BsonDocument BSON_DOCUMENT_ALL_TYPES_NO_NULL =
+      BsonDocument.parse(BSON_DOCUMENT_ALL_TYPES_JSON);
+
+  static {
+    BSON_DOCUMENT_ALL_TYPES_NO_NULL.remove("null");
+  }
 
   static final StructType BSON_DOCUMENT_ALL_TYPES_SCHEMA =
       new StructType()
@@ -272,125 +261,4 @@ abstract class SchemaTest {
                   "{\"$undefined\": true}")
               .toArray(),
           BSON_DOCUMENT_ALL_TYPES_SCHEMA_FINAL);
-
-  static final StructType BSON_DOCUMENT_EXTENDED_TYPES_SCHEMA =
-      new StructType()
-          .add("arrayEmpty", DataTypes.createArrayType(DataTypes.StringType, true))
-          .add("arraySimple", DataTypes.createArrayType(DataTypes.IntegerType, true))
-          .add(
-              "arrayComplex",
-              DataTypes.createArrayType(
-                  DataTypes.createStructType(
-                      singletonList(
-                          DataTypes.createStructField("a", DataTypes.IntegerType, true)))))
-          .add("arrayMixedTypes", DataTypes.createArrayType(DataTypes.StringType, true))
-          .add(
-              "arrayComplexMixedTypes",
-              DataTypes.createArrayType(
-                  DataTypes.createStructType(
-                      singletonList(DataTypes.createStructField("a", DataTypes.StringType, true)))))
-          .add("boolean", DataTypes.BooleanType)
-          .add("dateTime", DataTypes.TimestampType)
-          .add("decimal128", DataTypes.createDecimalType(2, 1))
-          .add("documentEmpty", DataTypes.createStructType(emptyList()))
-          .add(
-              "document",
-              DataTypes.createStructType(
-                  singletonList(DataTypes.createStructField("a", DataTypes.IntegerType, true))))
-          .add("double", DataTypes.DoubleType)
-          .add("int32", DataTypes.IntegerType)
-          .add("int64", DataTypes.LongType)
-          .add("null", DataTypes.NullType)
-          .add("string", DataTypes.StringType)
-          .add("binary", BsonBinaryDataType.DATA_TYPE.getSchema())
-          .add("code", BsonJavaScriptDataType.DATA_TYPE.getSchema())
-          .add("codeWithScope", BsonJavaScriptWithScopeDataType.DATA_TYPE.getSchema())
-          .add("maxKey", BsonMaxKeyDataType.DATA_TYPE.getSchema())
-          .add("minKey", BsonMinKeyDataType.DATA_TYPE.getSchema())
-          .add("objectId", BsonObjectIdDataType.DATA_TYPE.getSchema())
-          .add("regex", BsonRegularExpressionDataType.DATA_TYPE.getSchema())
-          .add("symbol", BsonSymbolDataType.DATA_TYPE.getSchema())
-          .add("timestamp", BsonTimestampDataType.DATA_TYPE.getSchema())
-          .add("undefined", BsonUndefinedDataType.DATA_TYPE.getSchema());
-
-  static final GenericRowWithSchema ALL_TYPES_EXTENDED_ROW =
-      new GenericRowWithSchema(
-          asList(
-                  emptyList().toArray(),
-                  asList(1, 2, 3).toArray(),
-                  asList(
-                          new GenericRowWithSchema(
-                              singletonList(1).toArray(),
-                              DataTypes.createStructType(
-                                  singletonList(
-                                      DataTypes.createStructField(
-                                          "a", DataTypes.IntegerType, true)))),
-                          new GenericRowWithSchema(
-                              singletonList(2).toArray(),
-                              DataTypes.createStructType(
-                                  singletonList(
-                                      DataTypes.createStructField(
-                                          "a", DataTypes.IntegerType, true)))))
-                      .toArray(),
-                  asList("1", "2", "true", "[1, 2, 3]", "{\"a\": 2}").toArray(),
-                  asList(
-                          new GenericRowWithSchema(
-                              singletonList("1").toArray(),
-                              DataTypes.createStructType(
-                                  singletonList(
-                                      DataTypes.createStructField(
-                                          "a", DataTypes.StringType, true)))),
-                          new GenericRowWithSchema(
-                              singletonList("a").toArray(),
-                              DataTypes.createStructType(
-                                  singletonList(
-                                      DataTypes.createStructField(
-                                          "a", DataTypes.StringType, true)))))
-                      .toArray(),
-                  true,
-                  new Timestamp(1577836801000L),
-                  new BigDecimal("1.0"),
-                  new GenericRowWithSchema(
-                      emptyList().toArray(), DataTypes.createStructType(emptyList())),
-                  new GenericRowWithSchema(
-                      singletonList(1).toArray(),
-                      DataTypes.createStructType(
-                          singletonList(
-                              DataTypes.createStructField("a", DataTypes.IntegerType, true)))),
-                  62.0,
-                  42,
-                  52L,
-                  null,
-                  "the fox ...",
-                  new GenericRowWithSchema(
-                      asList(
-                              (byte) 0x80,
-                              new byte[] {75, 97, 102, 107, 97, 32, 114, 111, 99, 107, 115, 33})
-                          .toArray(),
-                      BsonBinaryDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      singletonList("int i = 0;").toArray(),
-                      BsonJavaScriptDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      asList("int x = y;", "{\"y\": 1}").toArray(),
-                      BsonJavaScriptWithScopeDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      singletonList(1).toArray(), BsonMaxKeyDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      singletonList(1).toArray(), BsonMinKeyDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      singletonList("5f3d1bbde0ca4d2829c91e1d").toArray(),
-                      BsonObjectIdDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      asList("^test.*regex.*xyz$", "i").toArray(),
-                      BsonRegularExpressionDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      singletonList("ruby stuff").toArray(),
-                      BsonSymbolDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      asList(305419896, 5).toArray(), BsonTimestampDataType.DATA_TYPE.getSchema()),
-                  new GenericRowWithSchema(
-                      singletonList(true).toArray(), BsonUndefinedDataType.DATA_TYPE.getSchema()))
-              .toArray(),
-          BSON_DOCUMENT_EXTENDED_TYPES_SCHEMA);
 }

@@ -63,10 +63,7 @@ import org.bson.BsonBinaryWriter;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
-import org.bson.BsonMaxKey;
-import org.bson.BsonMinKey;
 import org.bson.BsonNumber;
-import org.bson.BsonUndefined;
 import org.bson.BsonValue;
 import org.bson.RawBsonDocument;
 import org.bson.codecs.EncoderContext;
@@ -76,17 +73,6 @@ import org.bson.types.Decimal128;
 
 import com.mongodb.spark.sql.connector.exceptions.DataException;
 import com.mongodb.spark.sql.connector.interop.JavaScala;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonBinaryDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonDbPointerDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptWithScopeDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMaxKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMinKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonObjectIdDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonRegularExpressionDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonSymbolDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonTimestampDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonUndefinedDataType;
 
 /**
  * The helper for conversion of BsonDocuments to GenericRowWithSchema instances.
@@ -211,53 +197,6 @@ public final class BsonDocumentToRowConverter implements Serializable {
       final BsonValue bsonValue,
       final JsonWriterSettings jsonWriterSettings) {
 
-    if (BsonBinaryDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(bsonValue::isBinary, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonBinaryDataType.DATA_TYPE.toSparkData(bsonValue.asBinary());
-    } else if (BsonDbPointerDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          bsonValue::isDBPointer, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonDbPointerDataType.DATA_TYPE.toSparkData(bsonValue.asDBPointer());
-    } else if (BsonJavaScriptDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          bsonValue::isJavaScript, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonJavaScriptDataType.DATA_TYPE.toSparkData(bsonValue.asJavaScript());
-    } else if (BsonJavaScriptWithScopeDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          bsonValue::isJavaScriptWithScope, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonJavaScriptWithScopeDataType.DATA_TYPE.toSparkData(
-          bsonValue.asJavaScriptWithScope());
-    } else if (BsonMaxKeyDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          () -> bsonValue instanceof BsonMaxKey,
-          () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonMaxKeyDataType.DATA_TYPE.toSparkData((BsonMaxKey) bsonValue);
-    } else if (BsonMinKeyDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          () -> bsonValue instanceof BsonMinKey,
-          () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonMinKeyDataType.DATA_TYPE.toSparkData((BsonMinKey) bsonValue);
-    } else if (BsonObjectIdDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          bsonValue::isObjectId, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonObjectIdDataType.DATA_TYPE.toSparkData(bsonValue.asObjectId());
-    } else if (BsonRegularExpressionDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          bsonValue::isRegularExpression, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonRegularExpressionDataType.DATA_TYPE.toSparkData(bsonValue.asRegularExpression());
-    } else if (BsonSymbolDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(bsonValue::isSymbol, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonSymbolDataType.DATA_TYPE.toSparkData(bsonValue.asSymbol());
-    } else if (BsonTimestampDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          bsonValue::isTimestamp, () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonTimestampDataType.DATA_TYPE.toSparkData(bsonValue.asTimestamp());
-    } else if (BsonUndefinedDataType.DATA_TYPE.isSameType(dataType)) {
-      ensureFieldData(
-          () -> bsonValue instanceof BsonUndefined,
-          () -> invalidFieldData(fieldName, dataType, bsonValue));
-      return BsonUndefinedDataType.DATA_TYPE.toSparkData((BsonUndefined) bsonValue);
-    }
     ensureFieldData(bsonValue::isDocument, () -> invalidFieldData(fieldName, dataType, bsonValue));
     BsonDocument bsonDocument = bsonValue.asDocument();
     List<Object> values = new ArrayList<>();
@@ -443,6 +382,7 @@ public final class BsonDocumentToRowConverter implements Serializable {
         if (value.startsWith("\"") && value.endsWith("\"")) {
           value = value.substring(1, value.length() - 1);
         }
+        System.out.println(value + " :: " + bsonValue);
         return value;
     }
   }

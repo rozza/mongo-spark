@@ -300,7 +300,7 @@ public final class MongoScanBuilder
           localSchema = (StructType) localField.dataType();
         }
       }
-      return Optional.of(RowToBsonDocumentConverter.toBsonValue(localDataType, value));
+      return Optional.of(RowToBsonDocumentConverter.toBsonValue(localDataType, value, true));
     } catch (Exception e) {
       // ignore
       return Optional.empty();

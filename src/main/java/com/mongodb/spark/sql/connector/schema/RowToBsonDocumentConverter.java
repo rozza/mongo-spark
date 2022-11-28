@@ -25,7 +25,6 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.spark.sql.Row;
@@ -51,24 +50,16 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.json.JsonParseException;
 import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 
 import com.mongodb.spark.sql.connector.exceptions.ConfigException;
 import com.mongodb.spark.sql.connector.exceptions.DataException;
 import com.mongodb.spark.sql.connector.interop.JavaScala;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonBinaryDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonDbPointerDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonJavaScriptWithScopeDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMaxKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonMinKeyDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonObjectIdDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonRegularExpressionDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonSymbolDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonTimestampDataType;
-import com.mongodb.spark.sql.connector.schema.compatibility.BsonUndefinedDataType;
 
 /**
  * The helper for conversion of GenericRowWithSchema instances to BsonDocuments.
@@ -81,6 +72,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
   private static final long serialVersionUID = 1L;
 
   private final Function<InternalRow, Row> internalRowConverter;
+  private final boolean autoConvertExtendedBson;
 
   /** Construct a new instance */
   @TestOnly
@@ -88,7 +80,8 @@ public final class RowToBsonDocumentConverter implements Serializable {
     this(
         internalRow -> {
           throw new ConfigException("No InternalRow to Row converter");
-        });
+        },
+        true);
   }
 
   /**
@@ -96,13 +89,17 @@ public final class RowToBsonDocumentConverter implements Serializable {
    *
    * @param schema the schema for the row
    */
-  public RowToBsonDocumentConverter(final StructType schema) {
-    this(new InternalRowToRowFunction(schema));
+  public RowToBsonDocumentConverter(
+      final StructType schema, final boolean autoConvertExtendedBson) {
+    this(new InternalRowToRowFunction(schema), autoConvertExtendedBson);
   }
 
   /** Construct a new instance */
-  private RowToBsonDocumentConverter(final Function<InternalRow, Row> internalRowConverter) {
+  private RowToBsonDocumentConverter(
+      final Function<InternalRow, Row> internalRowConverter,
+      final boolean autoConvertExtendedBson) {
     this.internalRowConverter = internalRowConverter;
+    this.autoConvertExtendedBson = autoConvertExtendedBson;
   }
 
   /**
@@ -127,7 +124,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
     if (row.schema() == null) {
       throw new DataException("Cannot convert Row without schema");
     }
-    return toBsonValue(row.schema(), row).asDocument();
+    return toBsonValue(row.schema(), row, autoConvertExtendedBson).asDocument();
   }
 
   /**
@@ -138,7 +135,8 @@ public final class RowToBsonDocumentConverter implements Serializable {
    * @return the bsonValue
    */
   @SuppressWarnings("unchecked")
-  public static BsonValue toBsonValue(final DataType dataType, final Object data) {
+  public static BsonValue toBsonValue(
+      final DataType dataType, final Object data, final boolean autoConvertExtendedBson) {
     try {
       if (DataTypes.BinaryType.acceptsType(dataType)) {
         return new BsonBinary((byte[]) data);
@@ -157,7 +155,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
       } else if (DataTypes.LongType.acceptsType(dataType)) {
         return new BsonInt64(((Number) data).longValue());
       } else if (DataTypes.StringType.acceptsType(dataType)) {
-        return new BsonString((String) data);
+        return processString((String) data, autoConvertExtendedBson);
       } else if (DataTypes.DateType.acceptsType(dataType)
           || DataTypes.TimestampType.acceptsType(dataType)) {
         return new BsonDateTime(((Date) data).getTime());
@@ -179,7 +177,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
         } else {
           listData = JavaScala.asJava((scala.collection.Seq<Object>) data);
         }
-        listData.forEach(d -> bsonArray.add(toBsonValue(elementType, d)));
+        listData.forEach(d -> bsonArray.add(toBsonValue(elementType, d, autoConvertExtendedBson)));
         return bsonArray;
       } else if (dataType instanceof MapType) {
         DataType keyType = ((MapType) dataType).keyType();
@@ -195,27 +193,23 @@ public final class RowToBsonDocumentConverter implements Serializable {
         } else {
           mapData = JavaScala.asJava((scala.collection.Map<String, Object>) data);
         }
-        mapData.forEach((k, v) -> bsonDocument.put(k, toBsonValue(valueType, v)));
+        mapData.forEach(
+            (k, v) -> bsonDocument.put(k, toBsonValue(valueType, v, autoConvertExtendedBson)));
         return bsonDocument;
       } else if (dataType instanceof StructType) {
         Row row = (Row) data;
-        return fromBsonDataType(dataType, row)
-            .orElseGet(
-                () -> {
-                  System.out.println("OK");
-                  BsonDocument bsonDocument = new BsonDocument();
-                  for (StructField field : row.schema().fields()) {
-                    int fieldIndex = row.fieldIndex(field.name());
-                    if (!(field.nullable() && row.isNullAt(fieldIndex))) {
-                      bsonDocument.append(
-                          field.name(), toBsonValue(field.dataType(), row.get(fieldIndex)));
-                    }
-                  }
-                  return bsonDocument;
-                });
+        BsonDocument bsonDocument = new BsonDocument();
+        for (StructField field : row.schema().fields()) {
+          int fieldIndex = row.fieldIndex(field.name());
+          if (!(field.nullable() && row.isNullAt(fieldIndex))) {
+            bsonDocument.append(
+                field.name(),
+                toBsonValue(field.dataType(), row.get(fieldIndex), autoConvertExtendedBson));
+          }
+        }
+        return bsonDocument;
       }
     } catch (Exception e) {
-      e.printStackTrace();
       throw new DataException(
           format(
               "Cannot cast %s into a BsonValue. %s has no matching BsonValue. Error: %s",
@@ -223,37 +217,24 @@ public final class RowToBsonDocumentConverter implements Serializable {
     }
 
     throw new DataException(
-        format("Cannot cast %s into a BsonValue. %s has no matching BsonValue.", data, dataType));
+        format(
+            "Cannot cast %s into a BsonValue. %s data type has no matching BsonValue.",
+            data, dataType));
   }
 
-  static Optional<BsonValue> fromBsonDataType(final DataType dataType, final Row row) {
-    System.out.println(dataType + " :: " + row);
-    System.out.println(" >> " + BsonBinaryDataType.DATA_TYPE.sameType(dataType));
+  private static final String BSON_TEMPLATE = "{v: %s}";
 
-    if (BsonBinaryDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonBinaryDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonDbPointerDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonDbPointerDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonJavaScriptDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonJavaScriptDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonJavaScriptWithScopeDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonJavaScriptWithScopeDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonMaxKeyDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonMaxKeyDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonMinKeyDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonMinKeyDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonObjectIdDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonObjectIdDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonRegularExpressionDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonRegularExpressionDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonSymbolDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonSymbolDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonTimestampDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonTimestampDataType.DATA_TYPE.fromSparkData(row));
-    } else if (BsonUndefinedDataType.DATA_TYPE.sameType(dataType)) {
-      return Optional.of(BsonUndefinedDataType.DATA_TYPE.fromSparkData(row));
+  private static BsonValue processString(final String data, final boolean autoConvertExtendedBson) {
+    if (autoConvertExtendedBson) {
+      if (ObjectId.isValid(data)) {
+        return new BsonObjectId(new ObjectId(data));
+      }
+      try {
+        return BsonDocument.parse(format(BSON_TEMPLATE, data)).get("v");
+      } catch (JsonParseException e) {
+        return new BsonString(data);
+      }
     }
-
-    return Optional.empty();
+    return new BsonString(data);
   }
 }
