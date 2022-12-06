@@ -62,7 +62,8 @@ final class MongoMicroBatchStream implements MicroBatchStream {
         schema,
         (s) -> !s.isEmpty(),
         () -> "Mongo micro batch streams require a schema to be defined");
-    this.bsonDocumentToRowConverter = new BsonDocumentToRowConverter(schema);
+    this.bsonDocumentToRowConverter =
+        new BsonDocumentToRowConverter(schema, readConfig.outputExtendedJson());
     this.readConfig = readConfig;
   }
 

@@ -39,7 +39,6 @@ import org.apache.spark.sql.types.StringType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.TestOnly;
 
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
@@ -50,14 +49,12 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
-import org.bson.BsonObjectId;
+import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonParseException;
 import org.bson.types.Decimal128;
-import org.bson.types.ObjectId;
 
-import com.mongodb.spark.sql.connector.exceptions.ConfigException;
 import com.mongodb.spark.sql.connector.exceptions.DataException;
 import com.mongodb.spark.sql.connector.interop.JavaScala;
 
@@ -70,36 +67,38 @@ import com.mongodb.spark.sql.connector.interop.JavaScala;
 public final class RowToBsonDocumentConverter implements Serializable {
 
   private static final long serialVersionUID = 1L;
+  private static final RowToBsonDocumentConverter DEFAULT_CONVERTER =
+      new RowToBsonDocumentConverter(new StructType(), true);
+
+  /**
+   * Converts data to Bson using its DataType to plan the conversion.
+   *
+   * @param dataType the data type
+   * @param data the data
+   * @return the BsonValue
+   */
+  public static BsonValue convertToBson(final DataType dataType, final Object data) {
+    return DEFAULT_CONVERTER.toBsonValue(dataType, data);
+  }
 
   private final Function<InternalRow, Row> internalRowConverter;
-  private final boolean autoConvertExtendedBson;
-
-  /** Construct a new instance */
-  @TestOnly
-  public RowToBsonDocumentConverter() {
-    this(
-        internalRow -> {
-          throw new ConfigException("No InternalRow to Row converter");
-        },
-        true);
-  }
+  private final boolean convertJson;
 
   /**
    * Construct a new instance
    *
    * @param schema the schema for the row
+   * @param convertJson convert any JSON or extended JSON strings
    */
-  public RowToBsonDocumentConverter(
-      final StructType schema, final boolean autoConvertExtendedBson) {
-    this(new InternalRowToRowFunction(schema), autoConvertExtendedBson);
+  public RowToBsonDocumentConverter(final StructType schema, final boolean convertJson) {
+    this(new InternalRowToRowFunction(schema), convertJson);
   }
 
   /** Construct a new instance */
   private RowToBsonDocumentConverter(
-      final Function<InternalRow, Row> internalRowConverter,
-      final boolean autoConvertExtendedBson) {
+      final Function<InternalRow, Row> internalRowConverter, final boolean convertJson) {
     this.internalRowConverter = internalRowConverter;
-    this.autoConvertExtendedBson = autoConvertExtendedBson;
+    this.convertJson = convertJson;
   }
 
   /**
@@ -124,7 +123,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
     if (row.schema() == null) {
       throw new DataException("Cannot convert Row without schema");
     }
-    return toBsonValue(row.schema(), row, autoConvertExtendedBson).asDocument();
+    return toBsonValue(row.schema(), row).asDocument();
   }
 
   /**
@@ -135,8 +134,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
    * @return the bsonValue
    */
   @SuppressWarnings("unchecked")
-  public static BsonValue toBsonValue(
-      final DataType dataType, final Object data, final boolean autoConvertExtendedBson) {
+  private BsonValue toBsonValue(final DataType dataType, final Object data) {
     try {
       if (DataTypes.BinaryType.acceptsType(dataType)) {
         return new BsonBinary((byte[]) data);
@@ -155,10 +153,12 @@ public final class RowToBsonDocumentConverter implements Serializable {
       } else if (DataTypes.LongType.acceptsType(dataType)) {
         return new BsonInt64(((Number) data).longValue());
       } else if (DataTypes.StringType.acceptsType(dataType)) {
-        return processString((String) data, autoConvertExtendedBson);
+        return processString((String) data);
       } else if (DataTypes.DateType.acceptsType(dataType)
           || DataTypes.TimestampType.acceptsType(dataType)) {
         return new BsonDateTime(((Date) data).getTime());
+      } else if (DataTypes.NullType.acceptsType(dataType)) {
+        return new BsonNull();
       } else if (dataType instanceof DecimalType) {
         BigDecimal bigDecimal =
             data instanceof BigDecimal
@@ -177,7 +177,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
         } else {
           listData = JavaScala.asJava((scala.collection.Seq<Object>) data);
         }
-        listData.forEach(d -> bsonArray.add(toBsonValue(elementType, d, autoConvertExtendedBson)));
+        listData.forEach(d -> bsonArray.add(toBsonValue(elementType, d)));
         return bsonArray;
       } else if (dataType instanceof MapType) {
         DataType keyType = ((MapType) dataType).keyType();
@@ -193,8 +193,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
         } else {
           mapData = JavaScala.asJava((scala.collection.Map<String, Object>) data);
         }
-        mapData.forEach(
-            (k, v) -> bsonDocument.put(k, toBsonValue(valueType, v, autoConvertExtendedBson)));
+        mapData.forEach((k, v) -> bsonDocument.put(k, toBsonValue(valueType, v)));
         return bsonDocument;
       } else if (dataType instanceof StructType) {
         Row row = (Row) data;
@@ -202,9 +201,7 @@ public final class RowToBsonDocumentConverter implements Serializable {
         for (StructField field : row.schema().fields()) {
           int fieldIndex = row.fieldIndex(field.name());
           if (!(field.nullable() && row.isNullAt(fieldIndex))) {
-            bsonDocument.append(
-                field.name(),
-                toBsonValue(field.dataType(), row.get(fieldIndex), autoConvertExtendedBson));
+            bsonDocument.append(field.name(), toBsonValue(field.dataType(), row.get(fieldIndex)));
           }
         }
         return bsonDocument;
@@ -224,11 +221,12 @@ public final class RowToBsonDocumentConverter implements Serializable {
 
   private static final String BSON_TEMPLATE = "{v: %s}";
 
-  private static BsonValue processString(final String data, final boolean autoConvertExtendedBson) {
-    if (autoConvertExtendedBson) {
-      if (ObjectId.isValid(data)) {
-        return new BsonObjectId(new ObjectId(data));
-      }
+  private BsonValue processString(final String data) {
+    if (convertJson) {
+      // TODO ?
+      //      if (ObjectId.isValid(data)) {
+      //        return new BsonObjectId(new ObjectId(data));
+      //      }
       try {
         return BsonDocument.parse(format(BSON_TEMPLATE, data)).get("v");
       } catch (JsonParseException e) {

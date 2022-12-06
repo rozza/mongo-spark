@@ -40,7 +40,8 @@ final class MongoBatch implements Batch {
    * @param readConfig the read configuration
    */
   MongoBatch(final StructType schema, final ReadConfig readConfig) {
-    this.bsonDocumentToRowConverter = new BsonDocumentToRowConverter(schema);
+    this.bsonDocumentToRowConverter =
+        new BsonDocumentToRowConverter(schema, readConfig.outputExtendedJson());
     this.readConfig = readConfig;
   }
 

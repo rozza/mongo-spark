@@ -45,7 +45,7 @@ public class MongoWriteBuilder implements WriteBuilder, SupportsTruncate {
   public MongoWriteBuilder(final LogicalWriteInfo info, final WriteConfig writeConfig) {
     this(
         info,
-        new RowToBsonDocumentConverter(info.schema(), writeConfig.autoConvertExtendedBson()),
+        new RowToBsonDocumentConverter(info.schema(), writeConfig.convertExtendedJson()),
         writeConfig.withOptions(info.options()),
         false);
   }

@@ -167,17 +167,17 @@ public final class WriteConfig extends AbstractMongoConfig {
   private static final boolean UPSERT_DOCUMENT_DEFAULT = true;
 
   /**
-   * Automatically convert extended BSON or JSON documents.
+   * Convert extended JSON values into their BSON equivalent.
    *
    * <p>Configuration: {@value}
    *
-   * <p>Default: {@value UPSERT_DOCUMENT_DEFAULT}
+   * <p>Default: {@value CONVERT_EXTENDED_JSON_DEFAULT}
    *
    * @since 10.1
    */
-  public static final String AUTO_CONVERT_EXTENDED_BSON_CONFIG = "autoConvertExtendedBson";
+  public static final String CONVERT_EXTENDED_JSON_CONFIG = "convertExtendedJson";
 
-  private static final boolean AUTO_CONVERT_EXTENDED_BSON_DEFAULT = true;
+  private static final boolean CONVERT_EXTENDED_JSON_DEFAULT = false;
 
   private final WriteConcern writeConcern;
   private final OperationType operationType;
@@ -239,9 +239,12 @@ public final class WriteConfig extends AbstractMongoConfig {
     return getBoolean(UPSERT_DOCUMENT_CONFIG, UPSERT_DOCUMENT_DEFAULT);
   }
 
-  /** @return true if should use an upsert */
-  public boolean autoConvertExtendedBson() {
-    return getBoolean(AUTO_CONVERT_EXTENDED_BSON_CONFIG, AUTO_CONVERT_EXTENDED_BSON_DEFAULT);
+  /**
+   * @return true if should convert extended JSON
+   * @since 10.1
+   */
+  public boolean convertExtendedJson() {
+    return getBoolean(CONVERT_EXTENDED_JSON_CONFIG, CONVERT_EXTENDED_JSON_DEFAULT);
   }
 
   private WriteConcern createWriteConcern() {

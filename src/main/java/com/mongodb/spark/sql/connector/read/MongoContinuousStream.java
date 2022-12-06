@@ -58,7 +58,8 @@ final class MongoContinuousStream implements ContinuousStream {
         schema,
         (s) -> !s.isEmpty(),
         () -> "Mongo Continuous streams require a schema to be defined");
-    this.bsonDocumentToRowConverter = new BsonDocumentToRowConverter(schema);
+    this.bsonDocumentToRowConverter =
+        new BsonDocumentToRowConverter(schema, readConfig.outputExtendedJson());
     this.readConfig = readConfig;
   }
 

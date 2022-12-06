@@ -49,7 +49,11 @@ import scala.collection.Seq;
 
 public class RowToBsonDocumentConverterTest extends SchemaTest {
 
-  private static final RowToBsonDocumentConverter CONVERTER = new RowToBsonDocumentConverter();
+  private static final RowToBsonDocumentConverter CONVERTER =
+      new RowToBsonDocumentConverter(new StructType(), false);
+
+  private static final RowToBsonDocumentConverter EXTENDED_CONVERTER =
+      new RowToBsonDocumentConverter(new StructType(), true);
 
   @Test
   @DisplayName("test simple types")
@@ -58,9 +62,16 @@ public class RowToBsonDocumentConverterTest extends SchemaTest {
   }
 
   @Test
-  @DisplayName("test all bson types")
-  void testAllBsonTypes() {
-    assertEquals(BSON_DOCUMENT_ALL_TYPES, CONVERTER.fromRow(ALL_TYPES_ROW));
+  @DisplayName("test relaxed json string types")
+  void testRelaxedStringTypes() {
+    assertEquals(BSON_DOCUMENT_RELAXED, EXTENDED_CONVERTER.fromRow(ALL_TYPES_RELAXED_JSON_ROW));
+  }
+
+  @Test
+  @DisplayName("test extended json string types")
+  void testExtendedStringTypes() {
+    assertEquals(
+        BSON_DOCUMENT_ALL_TYPES_NO_NULL, EXTENDED_CONVERTER.fromRow(ALL_TYPES_EXTENDED_JSON_ROW));
   }
 
   @Test
