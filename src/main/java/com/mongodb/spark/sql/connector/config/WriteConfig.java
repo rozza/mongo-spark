@@ -164,7 +164,7 @@ public final class WriteConfig extends AbstractMongoConfig {
    *
    * <p>Configuration: {@value}
    *
-   * <p>Default: "[_id]".
+   * <p>Default: "_id".
    *
    * <p>Note: For sharded clusters use the shard key.
    */
@@ -227,6 +227,19 @@ public final class WriteConfig extends AbstractMongoConfig {
   public static final String CONVERT_JSON_CONFIG = "convertJson";
 
   private static final String CONVERT_JSON_DEFAULT = ConvertJson.FALSE.value;
+
+    /**
+     * A comma delimited field list used to identify which fields to convert to json
+     *
+     * <p>Configuration: {@value}
+     *
+     * <p>Default: '*'
+     *
+     * @since 10.4
+     */
+    public static final String CONVERT_JSON_FIELDS_CONFIG = "convertJson.fields";
+
+    private static final List<String> CONVERT_JSON_FIELDS_DEFAULT = singletonList("*");
 
   /**
    * Ignore null values, even those within arrays or documents.
@@ -310,6 +323,14 @@ public final class WriteConfig extends AbstractMongoConfig {
   public ConvertJson convertJson() {
     return ConvertJson.fromString(getOrDefault(CONVERT_JSON_CONFIG, CONVERT_JSON_DEFAULT));
   }
+
+    /**
+     * @return a field list of fields to parse as Json
+     * @since 10.4
+     */
+    public List<String> convertJsonFields() {
+        return getList(CONVERT_JSON_FIELDS_CONFIG, CONVERT_JSON_FIELDS_DEFAULT);
+    }
 
   /**
    * @return the true if null values should be ignored, even those within arrays or documents
